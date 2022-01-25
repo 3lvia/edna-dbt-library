@@ -1,0 +1,15 @@
+{%- macro _upsert_dataproduct_entry(product_id, domain, dataproduct_group, bq_project, bq_dataset, identifier, dbt_id, owner, bq_columns, model_definition_columns, labels) -%}
+  {%- set column_str = _get_column_str(bq_columns, model_definition_columns)-%}
+  {%- set label_str = _get_label_str(labels) -%}
+
+  {%- set query -%}
+    MERGE `{{ bq_project }}.dataplatform_internal.dataproducts` T
+    USING (SELECT '{{ product_id }}' as id) S
+    ON T.id = S.id
+    WHEN MATCHED THEN
+      UPDATE SET domain = '{{ domain }}', dataproductGroup = '{{ dataproduct_group }}', owner = '{{ owner }}', lastUpdateTime = CURRENT_TIMESTAMP(), columns = {{ column_str }}, labels = {{ label_str }}
+    WHEN NOT MATCHED THEN
+      INSERT (id, domain, dataproductGroup, bigquery, dbtId, owner, registeredTime, lastUpdateTime, columns, labels)
+      VALUES('{{ product_id }}', '{{ domain }}', '{{ dataproduct_group }}', ('{{ bq_dataset }}', '{{ bq_identifier }}'), '{{ dbt_id }}', '{{ owner }}', CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), {{ column_str }}, {{ label_str }} )
+  {%- endset -%}
+{%- endmacro -%}
