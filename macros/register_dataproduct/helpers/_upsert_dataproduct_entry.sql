@@ -10,7 +10,7 @@
       UPDATE SET domain = '{{ domain }}', dataproductGroup = '{{ dataproduct_group }}', owner = '{{ owner }}', lastUpdateTime = CURRENT_TIMESTAMP(), columns = {{ column_str }}, labels = {{ label_str }}
     WHEN NOT MATCHED THEN
       INSERT (id, domain, dataproductGroup, bigquery, dbtId, owner, registeredTime, lastUpdateTime, columns, labels)
-      VALUES('{{ product_id }}', '{{ domain }}', '{{ dataproduct_group }}', ('{{ bq_dataset }}', '{{ bq_identifier }}'), '{{ dbt_id }}', '{{ owner }}', CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), {{ column_str }}, {{ label_str }} )
+      VALUES('{{ product_id }}', '{{ domain }}', '{{ dataproduct_group }}', ('{{ bq_dataset }}', '{{ identifier }}'), '{{ dbt_id }}', '{{ owner }}', CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), {{ column_str }}, {{ label_str }} )
   {%- endset -%}
 
   {%- do run_query(query) -%}
