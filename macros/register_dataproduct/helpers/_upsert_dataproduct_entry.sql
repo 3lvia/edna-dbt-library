@@ -1,6 +1,6 @@
 {%- macro _upsert_dataproduct_entry(product_id, domain, dataproduct_group, bq_project, bq_dataset, identifier, dbt_id, owner, bq_columns, model_definition_columns, labels) -%}
-  {%- set column_str = _get_column_str(bq_columns, model_definition_columns)-%}
-  {%- set label_str = _get_label_str(labels) -%}
+  {%- set column_str = edna_dbt_lib._get_column_str(bq_columns, model_definition_columns)-%}
+  {%- set label_str = edna_dbt_lib._get_label_str(labels) -%}
 
   {%- set query -%}
     MERGE `{{ bq_project }}.dataplatform_internal.dataproducts` T
