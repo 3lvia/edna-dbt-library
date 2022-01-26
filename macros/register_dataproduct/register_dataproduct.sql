@@ -18,7 +18,7 @@
       {%- set compiled_sql = model.compiled_sql -%}
       {%- set domain = project_name -%}
       {%- set dbt_id = model.unique_id -%}
-      {%- set model_definition_columns = config.model.columns -%}
+      {%- set model_definition_columns = config.model.columns if config.model.columns is defined or config.model.columns is none else {} -%}
       {%- set labels = config.get('labels', default={}) -%}
       {%- set dataproduct_group = config.model.path.split('/')[0] -%}
 
