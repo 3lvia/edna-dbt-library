@@ -1,5 +1,5 @@
 {%- macro _dataproduct_shoulud_be_registered(product_id, dataprodconfig) -%}
-  {%- if dataprodconfig is defined -%}
+  {%- if dataprodconfig is defined and dataprodconfig is not none -%}
     {{- return(true) -}}
   {%- else -%}
     {%- if _is_registered_dataproduct() -%}

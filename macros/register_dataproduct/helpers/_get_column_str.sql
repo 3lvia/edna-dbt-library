@@ -2,8 +2,8 @@
   {%- set cols = [] -%}
   {%- for column in bq_columns-%}
     {%- set model_column = model_definition_columns.get(column.name) -%}
-    {%- if model_column.description is defined -%}
-      {%- set description = odel_column.description -%}
+    {%- if model_column.description is defined and model_column.description is not none -%}
+      {%- set description = model_column.description -%}
     {% else %}
       {%- set description = '' -%}
     {%- endif -%}

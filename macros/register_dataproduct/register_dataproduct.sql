@@ -4,7 +4,7 @@
     {%- set dataprodconfig = config.get('dataproduct') -%}
     {%- if edna_dbt_lib._dataproduct_shoulud_be_registered(product_id, dataprodconfig) -%}
       {%- set owner = dataprodconfig.get('owner')-%}
-      {%- if owner is undefined -%}
+      {%- if owner is undefined or owner is none -%}
         {{ exceptions.raise_compiler_error("Dataproduct owner must be set") }}
       {%- endif -%}
       {%- set bq_dataset = schema -%}
