@@ -12,4 +12,6 @@
       INSERT (id, domain, dataproductGroup, bigquery, dbtId, owner, registeredTime, lastUpdateTime, columns, labels)
       VALUES('{{ product_id }}', '{{ domain }}', '{{ dataproduct_group }}', ('{{ bq_dataset }}', '{{ bq_identifier }}'), '{{ dbt_id }}', '{{ owner }}', CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), {{ column_str }}, {{ label_str }} )
   {%- endset -%}
+
+  {%- do run_query(query) -%}
 {%- endmacro -%}
