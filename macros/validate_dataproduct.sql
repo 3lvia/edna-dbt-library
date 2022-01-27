@@ -2,7 +2,7 @@
     {% if execute %}
 
         {% set dataprodconfig = config.get('dataproduct') %}
-        {% set is_registered = is_registered_dataproduct(target_relation) %}
+        {% set is_registered = edna_dbt_lib.is_registered_dataproduct(target_relation) %}
 
         {% if is_registered and not is_defined(dataprodconfig) %}
             {{ exceptions.raise_compiler_error("Can't unregister dataproduct.") }}
