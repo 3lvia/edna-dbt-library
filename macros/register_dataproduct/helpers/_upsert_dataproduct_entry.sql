@@ -7,7 +7,7 @@
     USING (SELECT '{{ product_id }}' as id) S
     ON T.id = S.id
     WHEN MATCHED THEN
-      UPDATE SET domain = '{{ domain }}', description= '{{ description }}' dataproductGroup = '{{ dataproduct_group }}', owner = '{{ owner }}', lastUpdateTime = CURRENT_TIMESTAMP(), columns = {{ column_str }}, labels = {{ label_str }}
+      UPDATE SET domain = '{{ domain }}', description= '{{ description }}', dataproductGroup = '{{ dataproduct_group }}', owner = '{{ owner }}', lastUpdateTime = CURRENT_TIMESTAMP(), columns = {{ column_str }}, labels = {{ label_str }}
     WHEN NOT MATCHED THEN
       INSERT (id, description, domain, dataproductGroup, bigquery, dbtId, owner, registeredTime, lastUpdateTime, columns, labels)
       VALUES('{{ product_id }}', '{{ description }}', '{{ domain }}', '{{ dataproduct_group }}', ('{{ bq_dataset }}', '{{ identifier }}'), '{{ dbt_id }}', '{{ owner }}', CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), {{ column_str }}, {{ label_str }} )
