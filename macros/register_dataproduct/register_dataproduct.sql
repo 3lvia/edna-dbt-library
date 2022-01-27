@@ -21,10 +21,11 @@
       {%- set model_definition_columns = config.model.columns if config.model.columns is defined or config.model.columns is none else {} -%}
       {%- set labels = config.get('labels', default={}) -%}
       {%- set dataproduct_group = config.model.path.split('/')[0] -%}
+      {%- set description = model.description -%}
 
       {%- set bq_columns = edna_dbt_lib._get_columns_and_check_for_column_deletion(is_registered, bq_project, identifier, compiled_sql) -%}
 
-      {%- do edna_dbt_lib._upsert_dataproduct_entry(product_id, domain, dataproduct_group, bq_project, bq_dataset, identifier, dbt_id, owner, bq_columns, model_definition_columns, labels)-%}
+      {%- do edna_dbt_lib._upsert_dataproduct_entry(product_id, description, domain, dataproduct_group, bq_project, bq_dataset, identifier, dbt_id, owner, bq_columns, model_definition_columns, labels)-%}
     {%- endif -%}
   {%- endif -%}
 {%- endmacro -%}
