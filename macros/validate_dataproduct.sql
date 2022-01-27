@@ -1,19 +1,19 @@
-{% macro validate_dataproduct() %}
+{% macro validate_dataproduct(target_relation) %}
     {% if execute %}
 
         {% set dataprodconfig = config.get('dataproduct') %}
-        {% set is_registered = is_registered_dataproduct(this) %}
+        {% set is_registered = is_registered_dataproduct(target_relation) %}
 
         {% if is_registered and not is_defined(dataprodconfig) %}
             {{ exceptions.raise_compiler_error("Can't unregister dataproduct.") }}
         {% endif %}
 
         {% if is_defined(dataprodconfig) %}
-            {% do validate_dataproductconfig(dataprodconfig) %}
-            {% do validate_is_in_dataproduct_dataset(this) %}
-            
+            {% do edna_dbt_lib.validate_dataproductconfig(dataprodconfig) %}
+            {% do edna_dbt_lib.validate_is_in_dataproduct_dataset(target_relation) %}
+
             {%- if is_registered -%}
-                {%- do check_for_column_deletion(model.compiled_sql, this) -%}
+                {%- do edna_dbt_lib.check_for_column_deletion(model.compiled_sql, target_relation) -%}
             {%- endif -%}
         {% endif %}
 
@@ -50,7 +50,7 @@
 {% endmacro %}
 
 {% macro check_for_column_deletion(compiled_sql, target_relation) %}
-    {% set tmp_relation = create_tmp_relation(compiled_sql, target_relation) %}
+    {% set tmp_relation = edna_dbt_lib.create_tmp_relation(compiled_sql, target_relation) %}
     {% set missing_columns = adapter.get_missing_columns(target_relation, tmp_relation) %}
     {% do adapter.drop_relation(tmp_relation) %}
     {% if missing_columns | length > 0 %}
