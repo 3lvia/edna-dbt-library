@@ -14,7 +14,7 @@
         {% set labels = edna_dbt_lib._get_formated_labels(config.get('labels', default={})) %}
 
         {% do edna_dbt_lib._upsert_dataproduct_entry(description, domain, dataproduct_group,
-                                        bq_dataset, bq_dataset, dbt_id, owner, columns, labels) %}
+                                        bq_dataset, bq_tablename, dbt_id, owner, columns, labels) %}
     {% endif %}
 {% endmacro %}
 
@@ -53,8 +53,8 @@
 
     {% set query %}
         merge dataplatform_internal.dataproducts T
-        using (select '{{ bq_dataset }}' as dataset, '{{ bq_tablename }}' as table_name) S
-        on T.bigquery.dataset = S.datasetId and T.bigquery.tableId = S.table_name
+        using (select '{{ bq_dataset }}' as datasetId, '{{ bq_tablename }}' as table_name) S
+        on T.bigquery.datasetId = S.datasetId and T.bigquery.tableId = S.table_name
         when matched then
             update set description = '{{ description }}', domain = '{{ domain }}',
                        dataproductGroup = '{{ dataproduct_group }}', dbtId = '{{ dbt_id }}', owner = '{{ owner }}',
