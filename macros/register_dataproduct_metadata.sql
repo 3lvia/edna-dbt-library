@@ -31,7 +31,14 @@
 
     {% set columns = [] %}
     {% for row in results.rows %}
-        {% do columns.append('({}, {}, {})'.format(row['field_path'], row['data_type'], row['description'])) %}
+
+        {% if row['description'] is none %}
+            {% set description = '' %}
+        {% else %}
+            {% set description = row['description'] %}
+        {% endif %}
+
+        {% do columns.append("('{}', '{}', '{}')".format(row['field_path'], row['data_type'], row['description'])) %}
     {% endfor %}
 
     {% do adapter.drop_relation(tmp_relation) %}
