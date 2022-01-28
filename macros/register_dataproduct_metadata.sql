@@ -41,7 +41,7 @@
 
 {% macro _get_formated_labels(label_dict) %}
     {% set labels = [] %}
-    {% for key, value in labels_dict.items() %}
+    {% for key, value in label_dict.items() %}
         {%- do labels.append('("{}", "{}")'.format(key, value)) -%}
     {% endfor %}
 
