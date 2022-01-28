@@ -15,6 +15,10 @@
             {%- if is_registered -%}
                 {%- do edna_dbt_lib._check_for_column_deletion(model.compiled_sql, this) -%}
             {%- endif -%}
+
+            {{ return(true) }}
+        {% else %}
+            {{ return(false) }}
         {% endif %}
 
     {% endif %}
