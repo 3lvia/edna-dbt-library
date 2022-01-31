@@ -1,4 +1,4 @@
-{% macro _register_dataproduct_metadata() %}
+{% macro register_dataproduct_metadata() %}
     {% if execute %}
         {% set dataprodconfig = config.get('dataproduct') %}
         {% if edna_dbt_lib.is_defined(dataprodconfig) %}
