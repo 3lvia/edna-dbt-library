@@ -25,7 +25,7 @@
     {% set query %}
         select field_path, data_type, description
         from {{ target_relation.schema }}.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
-        where table_name = '{{ tmp_relation.identifier }}'
+        where table_name = '{{ target_relation.identifier }}'
     {% endset %}
 
     {% set results = run_query(query) %}
