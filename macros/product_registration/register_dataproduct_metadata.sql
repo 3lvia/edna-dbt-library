@@ -29,16 +29,17 @@
 
     {% set results = run_query(query) %}
 
+    {% set model_definition_columns = config.model.columns if edna_dbt_lib.is_defined(config.model.columns) else {} %}
     {% set columns = [] %}
     {% for row in results.rows %}
-
-        {% if row['description'] is none %}
-            {% set description = '' %}
+        {% set model_column = model_definition_columns.get(row['field_path']) %}
+        {% if edna_dbt_lib.is_defined(model_column.description) %}
+            {% set description = model_column.description %}
         {% else %}
-            {% set description = row['description'] %}
+            {% set description = '' %}
         {% endif %}
 
-        {% do columns.append("('{}', '{}', '{}')".format(row['field_path'], row['data_type'], row['description'])) %}
+        {% do columns.append("('{}', '{}', '{}')".format(row['field_path'], row['data_type'], description)) %}
     {% endfor %}
 
     {% do adapter.drop_relation(tmp_relation) %}
