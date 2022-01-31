@@ -1,48 +1,39 @@
 {% macro _register_dataproduct_metadata() %}
     {% if execute %}
         {% set dataprodconfig = config.get('dataproduct') %}
+        {% if edna_dbt_lib.is_defined(dataprodconfig) %}
 
-        {% set description = model.description %}
-        {% set domain = project_name %}
-        {% set dataproduct_group = config.model.path.split('/')[0] %}
-        {% set bq_dataset = this.schema %}
-        {% set bq_tablename = this.identifier %}
-        {% set dbt_id = model.unique_id %}
-        {% set owner = dataprodconfig.get('owner') %}
+            {% set description = model.description %}
+            {% set domain = project_name %}
+            {% set dataproduct_group = config.model.path.split('/')[0] %}
+            {% set bq_dataset = this.schema %}
+            {% set bq_tablename = this.identifier %}
+            {% set dbt_id = model.unique_id %}
+            {% set owner = dataprodconfig.get('owner') %}
 
-        {% set columns = edna_dbt_lib._get_formated_columns(model.compiled_sql, this) %}
-        {% set labels = edna_dbt_lib._get_formated_labels(config.get('labels', default={})) %}
+            {% set columns = edna_dbt_lib._get_formated_columns(this) %}
+            {% set labels = edna_dbt_lib._get_formated_labels(config.get('labels', default={})) %}
 
-        {% do edna_dbt_lib._upsert_dataproduct_entry(description, domain, dataproduct_group,
-                                        bq_dataset, bq_tablename, dbt_id, owner, columns, labels) %}
+            {% do edna_dbt_lib._upsert_dataproduct_entry(description, domain, dataproduct_group,
+                                            bq_dataset, bq_tablename, dbt_id, owner, columns, labels) %}
+            
+        {% endif %}
     {% endif %}
 {% endmacro %}
 
-{% macro _get_formated_columns(compiled_sql, target_relation) %}
-    {% set tmp_relation = edna_dbt_lib.create_tmp_relation(compiled_sql, target_relation) %}
-
+{% macro _get_formated_columns(target_relation) %}
     {% set query %}
         select field_path, data_type, description
-        from {{ tmp_relation.schema }}.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
+        from {{ target_relation.schema }}.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
         where table_name = '{{ tmp_relation.identifier }}'
     {% endset %}
 
     {% set results = run_query(query) %}
 
-    {% set model_definition_columns = config.model.columns if edna_dbt_lib.is_defined(config.model.columns) else {} %}
     {% set columns = [] %}
     {% for row in results.rows %}
-        {% set model_column = model_definition_columns.get(row['field_path']) %}
-        {% if edna_dbt_lib.is_defined(model_column.description) %}
-            {% set description = model_column.description %}
-        {% else %}
-            {% set description = '' %}
-        {% endif %}
-
-        {% do columns.append("('{}', '{}', '{}')".format(row['field_path'], row['data_type'], description)) %}
+        {% do columns.append("('{}', '{}', '{}')".format(row['field_path'], row['data_type'], row['description'])) %}
     {% endfor %}
-
-    {% do adapter.drop_relation(tmp_relation) %}
 
     {{ return('[{}]'.format(columns | join(', '))) }}
 {% endmacro %}
