@@ -14,11 +14,28 @@
             {% set columns = edna_dbt_lib._get_formated_columns(this) %}
             {% set labels = edna_dbt_lib._get_formated_labels(config.get('labels', default={})) %}
 
+            {% set size_info = edna_dbt_lib._get_sizeinfo(this) %}
+
             {% do edna_dbt_lib._upsert_dataproduct_entry(description, domain, dataproduct_group,
-                                            bq_dataset, bq_tablename, dbt_id, owner, columns, labels) %}
+                                            bq_dataset, bq_tablename, dbt_id, owner, columns, labels, size_info) %}
             
         {% endif %}
     {% endif %}
+{% endmacro %}
+
+{% macro _get_sizeinfo(target_relation) %}
+    {% set query =
+        select row_count, size_bytes, type
+        from `{{ target_relation.schema }}.__TABLES__`
+        where table_id = '{{ target_relation.identifier }}'  %}
+
+    {% set rows = run_query(query).rows %}
+
+    {% if rows | count > 0 %}
+        {% set info = { 'row_count': rows[0]['row_count'] | int, 'size_bytes': rows[0]['size_bytes'] | int } %}
+    {% endif %}
+
+    {{ return( info | default({ 'row_count': 'NULL', 'size_bytes': 'NULL' })) }}
 {% endmacro %}
 
 {% macro _get_formated_columns(target_relation) %}
@@ -56,7 +73,7 @@
 {% endmacro %}
 
 {% macro _upsert_dataproduct_entry(
-            description, domain, dataproduct_group, bq_dataset, bq_tablename, dbt_id, owner, columns, labels) %}
+            description, domain, dataproduct_group, bq_dataset, bq_tablename, dbt_id, owner, columns, labels, size_info) %}
 
     {% set query %}
         merge dataplatform_internal.dataproducts T
@@ -65,14 +82,16 @@
         when matched then
             update set description = '{{ description }}', domain = '{{ domain }}',
                        dataproductGroup = '{{ dataproduct_group }}', dbtId = '{{ dbt_id }}', owner = '{{ owner }}',
-                       lastUpdateTime = current_timestamp(), columns = {{ columns }}, labels = {{ labels }}
+                       lastUpdateTime = current_timestamp(), columns = {{ columns }}, labels = {{ labels }},
+                       rowCount = {{ size_info.get('row_count') }}, sizeInBytes = {{ size_info.get('size_bytes')}}
         when not matched then
             insert (id, description, domain, dataproductGroup, bigquery, dbtId,
-                                    owner, registeredTime, lastUpdateTime, columns, labels)
+                                    owner, registeredTime, lastUpdateTime, columns, labels, rowCount, sizeInBytes)
             values (to_hex(md5('{{ "{}-{}".format(bq_dataset, bq_tablename) }}')),
                                     '{{ description }}', '{{ domain }}', '{{ dataproductGroup }}',
                                     ( '{{ bq_dataset }}', '{{ bq_tablename }}'), '{{ dbt_id }}', '{{ owner }}',
-                                    current_timestamp(), current_timestamp(), {{ columns }}, {{ labels }} )
+                                    current_timestamp(), current_timestamp(), {{ columns }}, {{ labels }} ),
+                                    {{ size_info.get('row_count') }}, {{ size_info.get('size_bytes')}}
     {% endset %}
 
     {% do run_query(query) %}
