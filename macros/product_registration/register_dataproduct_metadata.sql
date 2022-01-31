@@ -24,10 +24,11 @@
 {% endmacro %}
 
 {% macro _get_sizeinfo(target_relation) %}
-    {% set query =
+    {% set query
         select row_count, size_bytes, type
         from `{{ target_relation.schema }}.__TABLES__`
-        where table_id = '{{ target_relation.identifier }}'  %}
+        where table_id = '{{ target_relation.identifier }}'
+    {% endset %}
 
     {% set rows = run_query(query).rows %}
 
