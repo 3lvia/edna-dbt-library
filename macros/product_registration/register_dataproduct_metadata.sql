@@ -91,8 +91,8 @@
             values (to_hex(md5('{{ "{}-{}".format(bq_dataset, bq_tablename) }}')),
                                     '{{ description }}', '{{ domain }}', '{{ dataproductGroup }}',
                                     ( '{{ bq_dataset }}', '{{ bq_tablename }}'), '{{ dbt_id }}', '{{ owner }}',
-                                    current_timestamp(), current_timestamp(), {{ columns }}, {{ labels }} ),
-                                    {{ size_info.get('row_count') }}, {{ size_info.get('size_bytes')}}
+                                    current_timestamp(), current_timestamp(), {{ columns }}, {{ labels }},
+                                    {{ size_info.get('row_count') }}, {{ size_info.get('size_bytes')}} )
     {% endset %}
 
     {% do run_query(query) %}
