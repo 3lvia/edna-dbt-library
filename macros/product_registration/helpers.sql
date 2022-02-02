@@ -1,5 +1,5 @@
 {% macro is_defined(item) %}
-    {{ return(item is defined and item is not none) }}
+    {{ return(item is defined and item is not none and item != '') }}
 {% endmacro %}
 
 {% macro create_tmp_relation(compiled_sql, target_relation) %}
