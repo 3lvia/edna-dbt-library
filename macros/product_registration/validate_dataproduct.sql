@@ -12,7 +12,7 @@
             {% do edna_dbt_lib._validate_dataproductconfig(dataprodconfig) %}
             {% do edna_dbt_lib._validate_is_in_dataproduct_dataset(this) %}
 
-            {% if not is_defined(model.description) %}
+            {% if not edna_dbt_lib.is_defined(model.description) %}
                 {{ exceptions.raise_compiler_error("Dataproducts must have a description") }}
             {% endif %}
 
@@ -25,7 +25,7 @@
 
 {% macro _validate_dataproductconfig(dataprodconfig) %}
     {%- set owner = dataprodconfig.get('owner')-%}
-    {%- if not is_defined(owner) -%}
+    {%- if not edna_dbt_lib.is_defined(owner) -%}
         {{ exceptions.raise_compiler_error("Dataproduct owner must be set") }}
     {%- endif -%}
 {% endmacro %}
