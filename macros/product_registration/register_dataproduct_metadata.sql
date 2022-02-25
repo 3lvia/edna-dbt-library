@@ -10,13 +10,18 @@
             {% set bq_tablename = this.identifier %}
             {% set dbt_id = model.unique_id %}
             {% set owner = dataprodconfig.get('owner') %}
+            {% set displayName = dataprodconfig.get('displayName') %}
 
             {% set columns = edna_dbt_lib._get_formated_columns(this) %}
             {% set labels = edna_dbt_lib._get_formated_labels(config.get('labels', default={})) %}
 
             {% set size_info = edna_dbt_lib._get_sizeinfo(this) %}
 
-            {% do edna_dbt_lib._upsert_dataproduct_entry(description, domain, dataproduct_group,
+            {% if not edna_dbt_lib.is_defined(displayName) %}
+                {% set displayName = bq_tablename %}
+            {% endif %}
+
+            {% do edna_dbt_lib._upsert_dataproduct_entry(description, displayName, domain, dataproduct_group,
                                             bq_dataset, bq_tablename, dbt_id, owner, columns, labels, size_info) %}
             
         {% endif %}
@@ -74,21 +79,21 @@
 {% endmacro %}
 
 {% macro _upsert_dataproduct_entry(
-            description, domain, dataproduct_group, bq_dataset, bq_tablename, dbt_id, owner, columns, labels, size_info) %}
+            description, display_name, domain, dataproduct_group, bq_dataset, bq_tablename, dbt_id, owner, columns, labels, size_info) %}
 
     {% set query %}
         merge dataplatform_internal.dataproducts T
         using (select '{{ bq_dataset }}' as datasetId, '{{ bq_tablename }}' as table_name) S
         on T.bigquery.datasetId = S.datasetId and T.bigquery.tableId = S.table_name
         when matched then
-            update set description = '{{ description }}', domain = '{{ domain }}',
+            update set description = '{{ description }}', name = '{{ display_name }}', domain = '{{ domain }}',
                        dataproductGroup = '{{ dataproduct_group }}', dbtId = '{{ dbt_id }}', owner = '{{ owner }}',
                        lastUpdateTime = current_timestamp(), columns = {{ columns }}, labels = {{ labels }},
                        rowCount = {{ size_info.get('row_count') }}, sizeInBytes = {{ size_info.get('size_bytes')}}
         when not matched then
-            insert (id, description, domain, dataproductGroup, bigquery, dbtId,
+            insert (id, description, name, domain, dataproductGroup, bigquery, dbtId,
                                     owner, registeredTime, lastUpdateTime, columns, labels, rowCount, sizeInBytes)
-            values (to_hex(md5('{{ "{}-{}".format(bq_dataset, bq_tablename) }}')),
+            values (to_hex(md5('{{ "{}-{}".format(bq_dataset, bq_tablename) }}')), '{{ display_name }}',
                                     '{{ description }}', '{{ domain }}', '{{ dataproductGroup }}',
                                     ( '{{ bq_dataset }}', '{{ bq_tablename }}'), '{{ dbt_id }}', '{{ owner }}',
                                     current_timestamp(), current_timestamp(), {{ columns }}, {{ labels }},
