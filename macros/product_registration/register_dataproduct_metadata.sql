@@ -93,8 +93,8 @@
         when not matched then
             insert (id, description, name, domain, dataproductGroup, bigquery, dbtId,
                                     owner, registeredTime, lastUpdateTime, columns, labels, rowCount, sizeInBytes)
-            values (to_hex(md5('{{ "{}-{}".format(bq_dataset, bq_tablename) }}')), '{{ display_name }}',
-                                    '{{ description }}', '{{ domain }}', '{{ dataproductGroup }}',
+            values (to_hex(md5('{{ "{}-{}".format(bq_dataset, bq_tablename) }}')), '{{ description }}',
+                                    '{{ display_name }}', '{{ domain }}', '{{ dataproductGroup }}',
                                     ( '{{ bq_dataset }}', '{{ bq_tablename }}'), '{{ dbt_id }}', '{{ owner }}',
                                     current_timestamp(), current_timestamp(), {{ columns }}, {{ labels }},
                                     {{ size_info.get('row_count') }}, {{ size_info.get('size_bytes')}} )
