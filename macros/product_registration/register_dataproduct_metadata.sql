@@ -3,7 +3,7 @@
         {% set dataprodconfig = config.get('dataproduct') %}
         {% if edna_dbt_lib.is_defined(dataprodconfig) %}
 
-            {% set description = model.description %}
+            {% set description = edna_dbt_lib.quote_replace(model.description) %}
             {% set domain = project_name %}
             {% set dataproduct_group = config.model.path.split('/')[0] %}
             {% set bq_dataset = this.schema %}
@@ -63,7 +63,7 @@
             {% set description = '' %}
         {% endif %}
 
-        {% do columns.append("('{}', '{}', '{}')".format(row['field_path'], row['data_type'], description)) %}
+        {% do columns.append("('{}', '{}', '{}')".format(row['field_path'], row['data_type'], edna_dbt_lib.quote_replace(description))) %}
     {% endfor %}
 
     {{ return('[{}]'.format(columns | join(', '))) }}
