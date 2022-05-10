@@ -28,6 +28,16 @@
     {%- if not edna_dbt_lib.is_defined(owner) -%}
         {{ exceptions.raise_compiler_error("Dataproduct owner must be set") }}
     {%- endif -%}
+    {%- set preview_limit = dataproductconfig.get('previewLimit') -%}
+    {%- if edna_dbt_lib.is_defined(preview_limit) -%}
+        {%- do edna_dbt_lib._validate_whereclause(preview_limit) -%}
+    {%- endif -%}
+{% endmacro %}
+
+{% macro _validate_preview_limit(preview_limit) %}
+    {%- set query = 'select * from ({}) where {}'.format(model.compiled_sql, preview_limit) -%}
+    {%- set tmp_relation = edna_dbt_lib.create_tmp_relation(query, this) -%}
+    {%- do adapter.drop_relation(tmp_relation) -%}
 {% endmacro %}
 
 {% macro _validate_is_in_dataproduct_dataset(target_relation) %}
