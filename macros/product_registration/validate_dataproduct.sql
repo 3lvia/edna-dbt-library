@@ -28,7 +28,7 @@
     {%- if not edna_dbt_lib.is_defined(owner) -%}
         {{ exceptions.raise_compiler_error("Dataproduct owner must be set") }}
     {%- endif -%}
-    {%- set preview_limit = dataproductconfig.get('previewLimit') -%}
+    {%- set preview_limit = dataprodconfig.get('previewLimit') -%}
     {%- if edna_dbt_lib.is_defined(preview_limit) -%}
         {%- do edna_dbt_lib._validate_whereclause(preview_limit) -%}
     {%- endif -%}
