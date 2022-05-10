@@ -30,7 +30,7 @@
     {%- endif -%}
     {%- set preview_limit = dataprodconfig.get('previewLimit') -%}
     {%- if edna_dbt_lib.is_defined(preview_limit) -%}
-        {%- do edna_dbt_lib._validate_whereclause(preview_limit) -%}
+        {%- do edna_dbt_lib._validate_preview_limit(preview_limit) -%}
     {%- endif -%}
 {% endmacro %}
 
