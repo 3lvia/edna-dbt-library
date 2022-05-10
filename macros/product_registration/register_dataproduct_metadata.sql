@@ -21,8 +21,10 @@
                 {% set displayName = bq_tablename %}
             {% endif %}
 
+            {%- set preview_where_clause = dataprodconfig.get('previewWhereClause') -%}
+
             {% do edna_dbt_lib._upsert_dataproduct_entry(description, displayName, domain, dataproduct_group,
-                                            bq_dataset, bq_tablename, dbt_id, owner, columns, labels, size_info) %}
+                                            bq_dataset, bq_tablename, dbt_id, owner, columns, labels, size_info, preview_where_clause) %}
             
         {% endif %}
     {% endif %}
@@ -79,7 +81,8 @@
 {% endmacro %}
 
 {% macro _upsert_dataproduct_entry(
-            description, display_name, domain, dataproduct_group, bq_dataset, bq_tablename, dbt_id, owner, columns, labels, size_info) %}
+            description, display_name, domain, dataproduct_group, bq_dataset, bq_tablename, dbt_id, owner,
+            columns, labels, size_info, preview_where_clause) %}
 
     {% set query %}
         merge dataplatform_internal.dataproducts T
@@ -89,15 +92,17 @@
             update set description = '{{ description }}', name = '{{ display_name }}', domain = '{{ domain }}',
                        dataproductGroup = '{{ dataproduct_group }}', dbtId = '{{ dbt_id }}', owner = '{{ owner }}',
                        lastUpdateTime = current_timestamp(), columns = {{ columns }}, labels = {{ labels }},
-                       rowCount = {{ size_info.get('row_count') }}, sizeInBytes = {{ size_info.get('size_bytes')}}
+                       rowCount = {{ size_info.get('row_count') }}, sizeInBytes = {{ size_info.get('size_bytes')}},
+                       previewWhereClause = {{ preview_where_clause }}
         when not matched then
             insert (id, description, name, domain, dataproductGroup, bigquery, dbtId,
-                                    owner, registeredTime, lastUpdateTime, columns, labels, rowCount, sizeInBytes)
+                                    owner, registeredTime, lastUpdateTime, columns, labels, rowCount, sizeInBytes,
+                                    previewWhereClause)
             values (to_hex(md5('{{ "{}-{}".format(bq_dataset, bq_tablename) }}')), '{{ description }}',
                                     '{{ display_name }}', '{{ domain }}', '{{ dataproduct_group }}',
                                     ( '{{ bq_dataset }}', '{{ bq_tablename }}'), '{{ dbt_id }}', '{{ owner }}',
                                     current_timestamp(), current_timestamp(), {{ columns }}, {{ labels }},
-                                    {{ size_info.get('row_count') }}, {{ size_info.get('size_bytes')}} )
+                                    {{ size_info.get('row_count') }}, {{ size_info.get('size_bytes')}}, preview_where_clause )
     {% endset %}
 
     {% do run_query(query) %}
