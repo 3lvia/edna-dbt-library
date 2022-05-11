@@ -28,6 +28,16 @@
     {%- if not edna_dbt_lib.is_defined(owner) -%}
         {{ exceptions.raise_compiler_error("Dataproduct owner must be set") }}
     {%- endif -%}
+    {%- set preview_where_clause = dataprodconfig.get('previewWhereClause') -%}
+    {%- if edna_dbt_lib.is_defined(preview_where_clause) -%}
+        {%- do edna_dbt_lib._validate_preview_where_clause(preview_where_clause) -%}
+    {%- endif -%}
+{% endmacro %}
+
+{% macro _validate_preview_where_clause(preview_where_clause) %}
+    {%- set query = 'select * from ({}) where {}'.format(model.compiled_sql, preview_where_clause) -%}
+    {%- set tmp_relation = edna_dbt_lib.create_tmp_relation(query, this) -%}
+    {%- do adapter.drop_relation(tmp_relation) -%}
 {% endmacro %}
 
 {% macro _validate_is_in_dataproduct_dataset(target_relation) %}
