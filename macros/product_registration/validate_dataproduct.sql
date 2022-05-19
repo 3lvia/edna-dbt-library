@@ -88,7 +88,7 @@
 {% macro _get_missing_columns(target_columns, new_columns) %}
     {% set missing_columns = [] %}
     {% for column in target_columns %}
-        {% if not column in new_columns %}
+        {% if not column in new_columns and not( 'RECORD' in column.dtype or 'STRUCT' in column.dtype )%}
             {% do missing_columns.append(column) %}
         {% endif %}
     {% endfor %}
