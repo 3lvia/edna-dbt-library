@@ -61,7 +61,14 @@
 {% macro _check_for_column_deletion_and_descriptions(compiled_sql, target_relation, is_registered) %}
     {% set tmp_relation = edna_dbt_lib.create_tmp_relation(compiled_sql, target_relation) %}
 
-    {% set all_columns = adapter.get_columns_in_relation(tmp_relation) %}
+    {% set query %}
+        select field_path, data_type, description
+        from {{ tmp_relation.schema }}.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
+        where table_name = '{{ tmp_relation.identifier }}'
+    {% endset %}
+
+    {% set results = run_query(query) %}
+
     {% set missing_columns = adapter.get_missing_columns(target_relation, tmp_relation) %}
     
     {% do adapter.drop_relation(tmp_relation) %}
@@ -74,8 +81,8 @@
     {%- endif -%}
 
     {% set model_definition_columns = config.model.columns if edna_dbt_lib.is_defined(config.model.columns) else {} %}
-    {% for column in all_columns %}
-        {% set model_column = model_definition_columns.get(column.name) %}
+    {% for row in results %}
+        {% set model_column = model_definition_columns.get(row['field_path']) %}
         {% if not edna_dbt_lib.is_defined(model_column.description) %}
             {{ exceptions.raise_compiler_error("Dataproduct columns must have a description, missing description for {}".format(column.name)) }}
         {% endif %}
