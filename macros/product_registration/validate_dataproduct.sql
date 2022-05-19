@@ -61,17 +61,12 @@
 {% macro _check_for_column_deletion_and_descriptions(compiled_sql, target_relation, is_registered) %}
     {% set tmp_relation = edna_dbt_lib.create_tmp_relation(compiled_sql, target_relation) %}
 
-    {% set query %}
-        select field_path, data_type, description
-        from {{ tmp_relation.schema }}.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
-        where table_name = '{{ tmp_relation.identifier }}'
-    {% endset %}
-
-    {% set results = run_query(query) %}
-
-    {% set missing_columns = adapter.get_missing_columns(target_relation, tmp_relation) %}
-    
+    {% set new_columns = edna_dbt_lib._get_columns_from_relation(tmp_relation) %}
     {% do adapter.drop_relation(tmp_relation) %}
+
+    {% set old_columns = _get_columns_from_relation(target_relation) %}
+
+    {% set missing_columns = edna_dbt_lib._get_missing_columns(old_columns, new_columns) %}
     
     {% if is_registered  and missing_columns | length > 0 %}
         {{ exceptions.raise_compiler_error("Schema of registered dataproduct can't be changed. Missing columns: " 
@@ -81,12 +76,38 @@
     {%- endif -%}
 
     {% set model_definition_columns = config.model.columns if edna_dbt_lib.is_defined(config.model.columns) else {} %}
-    {% for row in results %}
+    {% for row in new_columns %}
         {% set column_name = row['field_path'] %}
         {% set model_column = model_definition_columns.get(column_name) %}
         {% if not edna_dbt_lib.is_defined(model_column.description) %}
             {{ exceptions.raise_compiler_error("Dataproduct columns must have a description, missing description for {}".format(column_name)) }}
         {% endif %}
     {% endfor %}
-
 {%- endmacro -%}
+
+{% macro _get_missing_columns(target_columns, new_columns) %}
+    {% set missing_columns = [] %}
+    {% for column in target_columns %}
+        {% if not column in new_columns %}
+            {% do missing_columns.append(column) %}
+        {% endif %}
+    {% endfor %}
+    {{ return(missing_columns) }}
+{% endmacro %}
+
+{% macro _get_columns_from_relation(relation) %}
+    {% set query %}
+        select field_path, data_type
+        from {{ relation.schema }}.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
+        where table_name = '{{ relation.identifier }}'
+    {% endset %}
+
+    {% set results = run_query(query) %}
+
+    {% set columns = [] %}
+    {% for row in results %}
+        {% do columns.append(api.Column(row['field_path'], row['data_type'])) %}
+    {% endfor %}
+
+    {{ return(columns) }}
+{% endmacro %}
