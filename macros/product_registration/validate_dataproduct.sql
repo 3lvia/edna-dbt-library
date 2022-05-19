@@ -82,9 +82,10 @@
 
     {% set model_definition_columns = config.model.columns if edna_dbt_lib.is_defined(config.model.columns) else {} %}
     {% for row in results %}
-        {% set model_column = model_definition_columns.get(row['field_path']) %}
+        {% set column_name = row['field_path'] %}
+        {% set model_column = model_definition_columns.get(column_name) %}
         {% if not edna_dbt_lib.is_defined(model_column.description) %}
-            {{ exceptions.raise_compiler_error("Dataproduct columns must have a description, missing description for {}".format(column.name)) }}
+            {{ exceptions.raise_compiler_error("Dataproduct columns must have a description, missing description for {}".format(column_name)) }}
         {% endif %}
     {% endfor %}
 
