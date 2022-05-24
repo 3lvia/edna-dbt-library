@@ -64,7 +64,7 @@
     {% set new_columns = edna_dbt_lib._get_columns_from_relation(tmp_relation) %}
     {% do adapter.drop_relation(tmp_relation) %}
 
-    {% set old_columns = _get_columns_from_relation(target_relation) %}
+    {% set old_columns = edna_dbt_lib._get_columns_from_relation(target_relation) %}
 
     {% set missing_columns = edna_dbt_lib._get_missing_columns(old_columns, new_columns) %}
     
