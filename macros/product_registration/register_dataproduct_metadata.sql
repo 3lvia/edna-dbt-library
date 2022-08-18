@@ -22,11 +22,6 @@
             {% endif %}
 
             {% set preview_where_clause = dataprodconfig.get('previewWhereClause') %}
-            {{ log("!!", true)}}
-            {{ log(preview_where_clause == None, true)}}
-            {{ log(preview_where_clause is none, true)}}
-            {{ log(preview_where_clause is not none, true)}}
-            {{ log(edna_dbt_lib.is_defined(preview_where_clause), true)}}
 
             {% do edna_dbt_lib._upsert_dataproduct_entry(description, displayName, domain, dataproduct_group,
                                             bq_dataset, bq_tablename, dbt_id, owner, columns, labels, size_info, preview_where_clause) %}
@@ -90,7 +85,6 @@
             columns, labels, size_info, preview_where_clause) %}
 
     {% if edna_dbt_lib.is_defined(preview_where_clause) %}
-        {{log("!!!!!!", true)}}
         {% set preview_where_clause = "'{}'".format(preview_where_clause) %}
     {% else %}
         {% set preview_where_clause = "null" %}
