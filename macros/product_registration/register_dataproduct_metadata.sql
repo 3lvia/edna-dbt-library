@@ -22,7 +22,8 @@
             {% endif %}
 
             {% set preview_where_clause = dataprodconfig.get('previewWhereClause') %}
-            {{ log(preview_where_clause, true)}}
+            {{ log("!!", true)}}
+            {{ log(preview_where_clause is None, true)}}
 
             {% do edna_dbt_lib._upsert_dataproduct_entry(description, displayName, domain, dataproduct_group,
                                             bq_dataset, bq_tablename, dbt_id, owner, columns, labels, size_info, preview_where_clause) %}
