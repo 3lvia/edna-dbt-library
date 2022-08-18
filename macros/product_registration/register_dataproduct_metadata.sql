@@ -25,6 +25,7 @@
             {{ log("!!", true)}}
             {{ log(preview_where_clause == None, true)}}
             {{ log(preview_where_clause is none, true)}}
+            {{ log(edna_dbt_lib.is_defined(preview_where_clause))}}
 
             {% do edna_dbt_lib._upsert_dataproduct_entry(description, displayName, domain, dataproduct_group,
                                             bq_dataset, bq_tablename, dbt_id, owner, columns, labels, size_info, preview_where_clause) %}
