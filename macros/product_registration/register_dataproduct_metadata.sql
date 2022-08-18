@@ -21,7 +21,7 @@
                 {% set displayName = bq_tablename %}
             {% endif %}
 
-            {%- set preview_where_clause = dataprodconfig.get('previewWhereClause') -%}
+            {% set preview_where_clause = dataprodconfig.get('previewWhereClause') %}
 
             {% do edna_dbt_lib._upsert_dataproduct_entry(description, displayName, domain, dataproduct_group,
                                             bq_dataset, bq_tablename, dbt_id, owner, columns, labels, size_info, preview_where_clause) %}
@@ -84,6 +84,12 @@
             description, display_name, domain, dataproduct_group, bq_dataset, bq_tablename, dbt_id, owner,
             columns, labels, size_info, preview_where_clause) %}
 
+    {% if edna_dbt_lib.is_defined(preview_where_clause) %}
+        {% set preview_where_clause = "'{}'".format(preview_where_clause) %}
+    {% else %}
+        {% set preview_where_clause = "null" %}
+    {% endif %}
+
     {% set query %}
         merge dataplatform_internal.dataproducts T
         using (select '{{ bq_dataset }}' as datasetId, '{{ bq_tablename }}' as table_name) S
@@ -93,7 +99,7 @@
                        dataproductGroup = '{{ dataproduct_group }}', dbtId = '{{ dbt_id }}', owner = '{{ owner }}',
                        lastUpdateTime = current_timestamp(), columns = {{ columns }}, labels = {{ labels }},
                        rowCount = {{ size_info.get('row_count') }}, sizeInBytes = {{ size_info.get('size_bytes')}},
-                       previewWhereClause = '{{ preview_where_clause }}'
+                       previewWhereClause = {{ preview_where_clause }}
         when not matched then
             insert (id, description, name, domain, dataproductGroup, bigquery, dbtId,
                                     owner, registeredTime, lastUpdateTime, columns, labels, rowCount, sizeInBytes,
@@ -102,7 +108,7 @@
                                     '{{ display_name }}', '{{ domain }}', '{{ dataproduct_group }}',
                                     ( '{{ bq_dataset }}', '{{ bq_tablename }}'), '{{ dbt_id }}', '{{ owner }}',
                                     current_timestamp(), current_timestamp(), {{ columns }}, {{ labels }},
-                                    {{ size_info.get('row_count') }}, {{ size_info.get('size_bytes')}}, '{{ preview_where_clause }}' )
+                                    {{ size_info.get('row_count') }}, {{ size_info.get('size_bytes')}}, {{ preview_where_clause }} )
     {% endset %}
 
     {% do run_query(query) %}
