@@ -1,4 +1,7 @@
 {% macro is_defined(item) %}
+    {{ log(item is defined, true) }}
+    {{ log(item is not none, true) }}
+    {{ log(item is item != '', true) }}
     {{ return(item is defined and item is not none and item != '') }}
 {% endmacro %}
 
