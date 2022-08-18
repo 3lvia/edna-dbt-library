@@ -91,9 +91,9 @@
 
     {% if edna_dbt_lib.is_defined(preview_where_clause) %}
         {{log("!!!!!!", true)}}
-        preview_where_clause = "'{}'".format(preview_where_clause)
+        {% set preview_where_clause = "'{}'".format(preview_where_clause) %}
     {% else %}
-        preview_where_clause = "null"
+        {% set preview_where_clause = "null" %}
     {% endif %}
 
     {% set query %}
