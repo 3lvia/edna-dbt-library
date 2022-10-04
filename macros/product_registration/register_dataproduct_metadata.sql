@@ -116,7 +116,7 @@
                                     ( '{{ bq_dataset }}', '{{ bq_tablename }}'), '{{ dbt_id }}', '{{ owner }}',
                                     current_timestamp(), current_timestamp(), {{ columns }}, {{ labels }},
                                     {{ size_info.get('row_count') }}, {{ size_info.get('size_bytes')}},
-                                    {{ preview_where_clause }}, version )
+                                    {{ preview_where_clause }}, {{ version }} )
     {% endset %}
 
     {% do run_query(query) %}
