@@ -116,6 +116,7 @@
 {% endmacro %}
 
 {% macro _validate_semantic_versioning(v) %}
+    {% set v = v | string %}
     {% set parts = v.split(".") %}
     {% if parts | length != 3 %}
         {{ exceptions.raise_compiler_error("Version sould be in format: major.minor.patch") }}
