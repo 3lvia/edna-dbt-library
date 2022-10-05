@@ -25,7 +25,7 @@
             {% set version = dataprodconfig.get('version') %}
 
             {% do edna_dbt_lib._upsert_dataproduct_entry(description, displayName, domain, dataproduct_group,
-                                bq_dataset, bq_tablename, dbt_id, owner, columns, labels, size_info, preview_where_clause, version) %}
+                                bq_dataset, bq_tablename, dbt_id, owner, columns, labels, size_info, preview_where_clause, version, this.name) %}
             
         {% endif %}
     {% endif %}
@@ -83,7 +83,7 @@
 
 {% macro _upsert_dataproduct_entry(
             description, display_name, domain, dataproduct_group, bq_dataset, bq_tablename, dbt_id, owner,
-            columns, labels, size_info, preview_where_clause, version) %}
+            columns, labels, size_info, preview_where_clause, version, name) %}
 
     {% if edna_dbt_lib.is_defined(preview_where_clause) %}
         {% set preview_where_clause = "'{}'".format(preview_where_clause) %}
@@ -111,7 +111,7 @@
             insert (id, description, name, domain, dataproductGroup, bigquery, dbtId,
                                     owner, registeredTime, lastUpdateTime, columns, labels, rowCount, sizeInBytes,
                                     previewWhereClause, version)
-            values (to_hex(md5('{{ "{}-{}".format(bq_dataset, bq_tablename) }}')), '{{ description }}',
+            values (to_hex(md5('{{ "{}-{}".format(bq_dataset, name) }}')), '{{ description }}',
                                     '{{ display_name }}', '{{ domain }}', '{{ dataproduct_group }}',
                                     ( '{{ bq_dataset }}', '{{ bq_tablename }}'), '{{ dbt_id }}', '{{ owner }}',
                                     current_timestamp(), current_timestamp(), {{ columns }}, {{ labels }},
