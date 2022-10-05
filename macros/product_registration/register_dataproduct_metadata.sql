@@ -18,7 +18,7 @@
             {% set size_info = edna_dbt_lib._get_sizeinfo(this) %}
 
             {% if not edna_dbt_lib.is_defined(displayName) %}
-                {% set displayName = this.name %}
+                {% set displayName = model.name %}
             {% endif %}
 
             {% set preview_where_clause = dataprodconfig.get('previewWhereClause') %}
