@@ -118,8 +118,8 @@
 {% macro _validate_semantic_versioning(v) %}
     {% set v = v | string %}
     {% set parts = v.split(".") %}
-    {% if parts | length != 3 %}
-        {{ exceptions.raise_compiler_error("Version sould be in format: major.minor.patch") }}
+    {% if parts | length > 3 %}
+        {{ exceptions.raise_compiler_error("Version has to many parts. Use format: major.minor.patch") }}
     {% endif %}
     {% for part in parts %}
         {% if part | int(-1) < 0 %}
