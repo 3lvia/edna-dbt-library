@@ -99,7 +99,7 @@
 
     {% set query %}
         merge dataplatform_internal.dataproducts T
-        using (select '{{ bq_dataset }}' as datasetId, '{{ bq_tablename }}' as table_name, '{{ version }}' as version) S
+        using (select '{{ bq_dataset }}' as datasetId, '{{ bq_tablename }}' as table_name, {{ version }} as version) S
         on T.bigquery.datasetId = S.datasetId and T.bigquery.tableId = S.table_name and T.version = S.version
         when matched then
             update set description = '{{ description }}', name = '{{ display_name }}', domain = '{{ domain }}',
