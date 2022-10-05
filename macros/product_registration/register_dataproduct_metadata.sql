@@ -25,7 +25,7 @@
             {% set version = dataprodconfig.get('version') %}
 
             {% do edna_dbt_lib._upsert_dataproduct_entry(description, displayName, domain, dataproduct_group,
-                                bq_dataset, bq_tablename, dbt_id, owner, columns, labels, size_info, preview_where_clause, version, this.name) %}
+                                bq_dataset, bq_tablename, dbt_id, owner, columns, labels, size_info, preview_where_clause, version, model.name) %}
             
         {% endif %}
     {% endif %}
