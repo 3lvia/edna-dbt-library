@@ -2,7 +2,7 @@
     {%- set dataprodconfig = node.config.get('dataproduct') -%}
 
     {%- if edna_dbt_lib.is_defined(dataprodconfig) and edna_dbt_lib.is_defined(dataprodconfig.get('version')) -%}
-        {%- set v = "_" ~ (dataprodconfig.get('version') | replace(".", "-")) -%}
+        {%- set v = "_v" ~ (dataprodconfig.get('version') | replace(".", "-")) -%}
     {%- endif -%}
 
     {%- if custom_alias_name is none -%}
