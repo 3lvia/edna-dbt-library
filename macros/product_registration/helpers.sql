@@ -16,8 +16,8 @@
 
 {% macro _string_or_null(stringvalue) %}
     {% if edna_dbt_lib.is_defined(stringvalue) %}
-        {{ return("'{}'".format(stringvalue)) }}
+        {{ return('{}'.format(stringvalue)) }}
     {% else %}
-        {{ return("null") }}
+        {{ return(null) }}
     {% endif %}
 {% endmacro %}
