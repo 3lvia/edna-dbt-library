@@ -86,18 +86,6 @@
             description, display_name, domain, dataproduct_group, bq_dataset, bq_tablename, dbt_id, owner,
             columns, labels, size_info, preview_where_clause, version, versionDescription, name) %}
 
-    {% if edna_dbt_lib.is_defined(preview_where_clause) %}
-        {% set preview_where_clause = "'{}'".format(preview_where_clause) %}
-    {% else %}
-        {% set preview_where_clause = "null" %}
-    {% endif %}
-
-    {% if edna_dbt_lib.is_defined(version) %}
-        {% set version = "'{}'".format(version) %}
-    {% else %}
-        {% set version = "null" %}
-    {% endif %}
-
     {% set query %}
         merge dataplatform_internal.dataproducts T
         using (select '{{ bq_dataset }}' as datasetId, '{{ bq_tablename }}' as table_name) S
