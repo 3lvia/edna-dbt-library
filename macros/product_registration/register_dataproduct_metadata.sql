@@ -109,7 +109,7 @@
         when not matched then
             insert (id, description, name, domain, dataproductGroup, bigquery, dbtId,
                     owner, registeredTime, lastUpdateTime, columns, labels, rowCount, sizeInBytes,
-                    previewWhereClause, version)
+                    previewWhereClause, version, versionDescription)
             values 
                 (to_hex(md5('{{ "{}-{}".format(bq_dataset, name) }}')),
                 '{{ description }}',
