@@ -92,6 +92,7 @@
         on T.bigquery.datasetId = S.datasetId and T.bigquery.tableId = S.table_name
         when matched then
             update set 
+                id = (to_hex(md5('{{ "{}-{}".format(bq_dataset, name) }}')),
                 description = '{{ description }}', 
                 name = '{{ display_name }}',
                 domain = '{{ domain }}',
