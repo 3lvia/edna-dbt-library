@@ -24,13 +24,17 @@
 {% endmacro %}
 
 {% macro _validate_dataproductconfig(dataprodconfig) %}
-    {%- set owner = dataprodconfig.get('owner')-%}
+    {%- set owner = dataprodconfig.get('owner') -%}
     {%- if not edna_dbt_lib.is_defined(owner) -%}
         {{ exceptions.raise_compiler_error("Dataproduct owner must be set") }}
     {%- endif -%}
     {%- set preview_where_clause = dataprodconfig.get('previewWhereClause') -%}
     {%- if edna_dbt_lib.is_defined(preview_where_clause) -%}
         {%- do edna_dbt_lib._validate_preview_where_clause(preview_where_clause) -%}
+    {%- endif -%}
+    {%- set version = dataprodconfig.get('version') -%}
+    {%- if edna_dbt_lib.is_defined(version) -%}
+        {%- do edna_dbt_lib._validate_semantic_versioning(version) -%}
     {%- endif -%}
 {% endmacro %}
 
@@ -109,4 +113,17 @@
     {% endfor %}
 
     {{ return(columns) }}
+{% endmacro %}
+
+{% macro _validate_semantic_versioning(v) %}
+    {% set v = v | string %}
+    {% set parts = v.split(".") %}
+    {% if parts | length > 4 or parts | length < 2 %}
+        {{ exceptions.raise_compiler_error("Version string portion was too short or too long. Use format: major.minor.(build).(revision)") }}
+    {% endif %}
+    {% for part in parts %}
+        {% if part | int(-1) < 0 %}
+            {{ exceptions.raise_compiler_error("each part of version must be a number. '" ~ part ~ "' is not a number") }}
+        {% endif %}
+    {% endfor %}
 {% endmacro %}

@@ -13,3 +13,11 @@
     {% do run_query(cmd) %}
     {{ return(tmp_relation) }}
 {% endmacro %}
+
+{% macro _string_or_null(stringvalue) %}
+    {% if edna_dbt_lib.is_defined(stringvalue) %}
+        {{ return("'{}'".format(stringvalue)) }}
+    {% else %}
+        {{ return("null") }}
+    {% endif %}
+{% endmacro %}

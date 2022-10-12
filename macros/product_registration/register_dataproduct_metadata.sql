@@ -18,13 +18,15 @@
             {% set size_info = edna_dbt_lib._get_sizeinfo(this) %}
 
             {% if not edna_dbt_lib.is_defined(displayName) %}
-                {% set displayName = bq_tablename %}
+                {% set displayName = model.name %}
             {% endif %}
 
             {% set preview_where_clause = dataprodconfig.get('previewWhereClause') %}
+            {% set version = dataprodconfig.get('version') %}
+            {% set versionDescription = dataprodconfig.get('versionDescription') %}
 
             {% do edna_dbt_lib._upsert_dataproduct_entry(description, displayName, domain, dataproduct_group,
-                                            bq_dataset, bq_tablename, dbt_id, owner, columns, labels, size_info, preview_where_clause) %}
+                                bq_dataset, bq_tablename, dbt_id, owner, columns, labels, size_info, preview_where_clause, version, versionDescription, model.name) %}
             
         {% endif %}
     {% endif %}
@@ -82,33 +84,50 @@
 
 {% macro _upsert_dataproduct_entry(
             description, display_name, domain, dataproduct_group, bq_dataset, bq_tablename, dbt_id, owner,
-            columns, labels, size_info, preview_where_clause) %}
-
-    {% if edna_dbt_lib.is_defined(preview_where_clause) %}
-        {% set preview_where_clause = "'{}'".format(preview_where_clause) %}
-    {% else %}
-        {% set preview_where_clause = "null" %}
-    {% endif %}
+            columns, labels, size_info, preview_where_clause, version, versionDescription, name) %}
 
     {% set query %}
         merge dataplatform_internal.dataproducts T
         using (select '{{ bq_dataset }}' as datasetId, '{{ bq_tablename }}' as table_name) S
         on T.bigquery.datasetId = S.datasetId and T.bigquery.tableId = S.table_name
         when matched then
-            update set description = '{{ description }}', name = '{{ display_name }}', domain = '{{ domain }}',
-                       dataproductGroup = '{{ dataproduct_group }}', dbtId = '{{ dbt_id }}', owner = '{{ owner }}',
-                       lastUpdateTime = current_timestamp(), columns = {{ columns }}, labels = {{ labels }},
-                       rowCount = {{ size_info.get('row_count') }}, sizeInBytes = {{ size_info.get('size_bytes')}},
-                       previewWhereClause = {{ preview_where_clause }}
+            update set 
+                description = '{{ description }}', 
+                name = '{{ display_name }}',
+                domain = '{{ domain }}',
+                dataproductGroup = '{{ dataproduct_group }}',
+                dbtId = '{{ dbt_id }}',
+                owner = '{{ owner }}',
+                lastUpdateTime = current_timestamp(),
+                columns = {{ columns }},
+                labels = {{ labels }},
+                rowCount = {{ size_info.get('row_count') }},
+                sizeInBytes = {{ size_info.get('size_bytes')}},
+                previewWhereClause = {{ edna_dbt_lib._string_or_null(preview_where_clause) }},
+                version = {{ edna_dbt_lib._string_or_null(version | string ) }},
+                versionDescription = {{ edna_dbt_lib._string_or_null(versionDescription) }}
         when not matched then
             insert (id, description, name, domain, dataproductGroup, bigquery, dbtId,
-                                    owner, registeredTime, lastUpdateTime, columns, labels, rowCount, sizeInBytes,
-                                    previewWhereClause)
-            values (to_hex(md5('{{ "{}-{}".format(bq_dataset, bq_tablename) }}')), '{{ description }}',
-                                    '{{ display_name }}', '{{ domain }}', '{{ dataproduct_group }}',
-                                    ( '{{ bq_dataset }}', '{{ bq_tablename }}'), '{{ dbt_id }}', '{{ owner }}',
-                                    current_timestamp(), current_timestamp(), {{ columns }}, {{ labels }},
-                                    {{ size_info.get('row_count') }}, {{ size_info.get('size_bytes')}}, {{ preview_where_clause }} )
+                    owner, registeredTime, lastUpdateTime, columns, labels, rowCount, sizeInBytes,
+                    previewWhereClause, version, versionDescription)
+            values 
+                (to_hex(md5('{{ "{}-{}".format(bq_dataset, name) }}')),
+                '{{ description }}',
+                '{{ display_name }}',
+                '{{ domain }}', 
+                '{{ dataproduct_group }}',
+                ( '{{ bq_dataset }}', '{{ bq_tablename }}'),
+                '{{ dbt_id }}',
+                '{{ owner }}',
+                current_timestamp(),
+                current_timestamp(),
+                {{ columns }},
+                {{ labels }},
+                {{ size_info.get('row_count') }},
+                {{ size_info.get('size_bytes')}},
+                {{ edna_dbt_lib._string_or_null(preview_where_clause) }},
+                {{ edna_dbt_lib._string_or_null(version | string) }},
+                {{ edna_dbt_lib._string_or_null(versionDescription) }} )
     {% endset %}
 
     {% do run_query(query) %}
