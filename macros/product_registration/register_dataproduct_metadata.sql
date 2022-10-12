@@ -105,7 +105,7 @@
                 rowCount = {{ size_info.get('row_count') }},
                 sizeInBytes = {{ size_info.get('size_bytes')}},
                 previewWhereClause = {{ edna_dbt_lib._string_or_null(preview_where_clause) }},
-                version = {{ edna_dbt_lib._string_or_null(version | string ) }},
+                version = {{ edna_dbt_lib._string_or_null(version) }},
                 versionDescription = {{ edna_dbt_lib._string_or_null(versionDescription) }}
         when not matched then
             insert (id, description, name, domain, dataproductGroup, bigquery, dbtId,
@@ -127,7 +127,7 @@
                 {{ size_info.get('row_count') }},
                 {{ size_info.get('size_bytes')}},
                 {{ edna_dbt_lib._string_or_null(preview_where_clause) }},
-                {{ edna_dbt_lib._string_or_null(version | string) }},
+                {{ edna_dbt_lib._string_or_null(version) }},
                 {{ edna_dbt_lib._string_or_null(versionDescription) }} )
     {% endset %}
 
