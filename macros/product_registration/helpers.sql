@@ -6,7 +6,7 @@
     {% set tmp_identifier = target_relation.identifier ~ '__edna_tmp' %}
     {% set tmp_relation = api.Relation.create(identifier=tmp_identifier,
                                                   schema=target_relation.schema,
-                                                  database=none,
+                                                  database=target_relation.database,
                                                   type='view') -%}
 
     {% set cmd = create_view_as(tmp_relation, compiled_sql) %}
