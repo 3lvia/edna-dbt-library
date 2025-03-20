@@ -2,6 +2,7 @@
     {% if execute %}
 
         {% set dataprodconfig = config.get('dataproduct') %}
+        {% set dbt_group = config.get('group') %}
         {% set is_registered = edna_dbt_lib._is_registered_dataproduct(this) %}
 
         {% if is_registered and not edna_dbt_lib.is_defined(dataprodconfig) %}
@@ -9,7 +10,7 @@
         {% endif %}
 
         {% if edna_dbt_lib.is_defined(dataprodconfig) %}
-            {% do edna_dbt_lib._validate_dataproductconfig(dataprodconfig) %}
+            {% do edna_dbt_lib._validate_dataproductconfig(dataprodconfig, dbt_group) %}
             {% do edna_dbt_lib._validate_is_in_dataproduct_dataset(this) %}
 
             {% if not edna_dbt_lib.is_defined(model.description) %}
@@ -23,9 +24,9 @@
     {% endif %}
 {% endmacro %}
 
-{% macro _validate_dataproductconfig(dataprodconfig) %}
+{% macro _validate_dataproductconfig(dataprodconfig, dbt_group) %}
     {%- set owner = dataprodconfig.get('owner') -%}
-    {%- if not edna_dbt_lib.is_defined(owner) -%}
+    {%- if (not edna_dbt_lib.is_defined(owner) or edna_dbt_lib.is_defined(dbt_group)) -%}
         {{ exceptions.raise_compiler_error("Dataproduct owner must be set") }}
     {%- endif -%}
     {%- set preview_where_clause = dataprodconfig.get('previewWhereClause') -%}
