@@ -26,7 +26,7 @@
 
 {% macro _validate_dataproductconfig(dataprodconfig, dbt_group) %}
     {%- set owner = dataprodconfig.get('owner') -%}
-    {%- if (not edna_dbt_lib.is_defined(owner) or edna_dbt_lib.is_defined(dbt_group)) -%}
+    {%- if not (edna_dbt_lib.is_defined(owner) or edna_dbt_lib.is_defined(dbt_group)) -%}
         {{ exceptions.raise_compiler_error("Dataproduct owner must be set") }}
     {%- endif -%}
     {%- set preview_where_clause = dataprodconfig.get('previewWhereClause') -%}
