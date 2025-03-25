@@ -1,42 +1,39 @@
 {% macro validate_dataproduct() %}
     {% if execute %}
-
-        {% set dataprodconfig = config.get('dataproduct') %}
-        {% set dbt_group = config.get('group') %}
         {% set is_registered = edna_dbt_lib._is_registered_dataproduct(this) %}
 
-        {% if is_registered and not edna_dbt_lib.is_defined(dataprodconfig) %}
+        {%- set dataproduct_config = config.get('dataproduct') -%}
+        {%- set is_dataproduct = edna_dbt_lib.is_defined(dataproduct_config) or config.get('datacatalog', False) -%}
+
+        {% if is_registered and not is_dataproduct %}
             {{ exceptions.raise_compiler_error("Can't unregister dataproduct.") }}
         {% endif %}
 
-        {% if edna_dbt_lib.is_defined(dataprodconfig) %}
-            {% do edna_dbt_lib._validate_dataproductconfig(dataprodconfig, dbt_group) %}
-            {% do edna_dbt_lib._validate_is_in_dataproduct_dataset(this) %}
+        {%- if is_dataproduct -%}
+            {%- set dataproduct_owner = (dataproduct_config.get('owner') if edna_dbt_lib.is_defined(dataproduct_config) else config.get('group')) -%}
 
+            {%- if not edna_dbt_lib.is_defined(dataproduct_owner) -%}
+                {{ exceptions.raise_compiler_error("Dataproduct owner must be set") }}
+            {%- endif -%}
+
+            {%- set preview_where_clause = dataproduct_config.get('previewWhereClause') if edna_dbt_lib.is_defined(dataproduct_config) else config.get('previewWhereClause') -%}
+            {%- if edna_dbt_lib.is_defined(preview_where_clause) -%}
+                {%- do edna_dbt_lib._validate_preview_where_clause(preview_where_clause) -%}
+            {%- endif -%}
+
+            {%- set version = dataproduct_config.get('version') if edna_dbt_lib.is_defined(dataproduct_config) -%}
+            {%- if edna_dbt_lib.is_defined(version) -%}
+                {%- do edna_dbt_lib._validate_semantic_versioning(version) -%}
+            {%- endif -%}
+
+            {% do edna_dbt_lib._validate_is_in_dataproduct_dataset(this) %}
             {% if not edna_dbt_lib.is_defined(model.description) %}
                 {{ exceptions.raise_compiler_error("Dataproducts must have a description") }}
             {% endif %}
 
             {%- do edna_dbt_lib._check_for_column_deletion_and_descriptions(model.compiled_sql, this, is_registered) -%}
-
-        {% endif %}
-
+        {%- endif -%}
     {% endif %}
-{% endmacro %}
-
-{% macro _validate_dataproductconfig(dataprodconfig, dbt_group) %}
-    {%- set owner = dataprodconfig.get('owner') -%}
-    {%- if not (edna_dbt_lib.is_defined(owner) or edna_dbt_lib.is_defined(dbt_group)) -%}
-        {{ exceptions.raise_compiler_error("Dataproduct owner must be set") }}
-    {%- endif -%}
-    {%- set preview_where_clause = dataprodconfig.get('previewWhereClause') -%}
-    {%- if edna_dbt_lib.is_defined(preview_where_clause) -%}
-        {%- do edna_dbt_lib._validate_preview_where_clause(preview_where_clause) -%}
-    {%- endif -%}
-    {%- set version = dataprodconfig.get('version') -%}
-    {%- if edna_dbt_lib.is_defined(version) -%}
-        {%- do edna_dbt_lib._validate_semantic_versioning(version) -%}
-    {%- endif -%}
 {% endmacro %}
 
 {% macro _validate_preview_where_clause(preview_where_clause) %}
