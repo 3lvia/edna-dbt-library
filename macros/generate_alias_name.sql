@@ -2,19 +2,24 @@
     {%- set dataprodconfig = node.config.get('dataproduct') -%}
 
     {%- if edna_dbt_lib.is_defined(dataprodconfig) and edna_dbt_lib.is_defined(dataprodconfig.get('version')) -%}
-        {%- set v = "_v" ~ (dataprodconfig.get('version') | trim('.0') | replace(".", "-")) -%}
-        {% if v == "_v1" %}
+        {%- set v = (dataprodconfig.get('version') | trim('.0')) -%}
+        
+        {% if v == "1" %}
             {% set v = "" %}
         {% endif %}
+
+    {%- elif node.version -%}
+        {%- set v = node.version -%}
     {%- endif -%}
 
-    {%- if custom_alias_name is none -%}
+    {%- if custom_alias_name -%}
+        {{ custom_alias_name | trim }}
 
-        {{ node.name ~ v }}
+    {%- elif edna_dbt_lib.is_defined(v) -%}
+        {{ return(node.name ~ "_v" ~ (v | replace(".", "-"))) }}
 
     {%- else -%}
-
-        {{ (custom_alias_name ~ v) | trim }}
+        {{ node.name }}
 
     {%- endif -%}
 
