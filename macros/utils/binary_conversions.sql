@@ -6,8 +6,8 @@
 
     {# 2. Subtract 2^32 to get the two-complement value if the sign bit is set (u32 > 0x7FFFFFFF) #}
     CASE
-        WHEN {{ u32 }} > 0x7FFFFFFF
-            THEN {{ u32 }} - 0x100000000
+        WHEN {{ u32 }} > CAST("0x7FFFFFFF" AS INT64)
+            THEN {{ u32 }} - CAST("0x100000000" AS INT64)
         ELSE {{ u32 }}
     END
 
