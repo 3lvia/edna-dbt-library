@@ -132,7 +132,7 @@
 
 {% macro double_unbiased_exponent(exp_bits) %}
     {#- Decode the 11-bit exponent field of an IEEE-754 double-precision floating-point number and return the unbiased exponent as INT64. -#}
-    {%- set exp_bias  = 1023 -%}|
+    {%- set exp_bias  = 1023 -%}
     (
         SELECT
             SUM(SAFE_CAST(char AS INT64) << (LENGTH({{ exp_bits }}) - 1 - bit_idx))
