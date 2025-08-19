@@ -1,17 +1,20 @@
 {% materialization incremental_log, adapter='bigquery', supported_languages=['sql'] %}
+    {% set model_run_started_time = modules.datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f UTC') %}
 
     {% set bq_ids             = bq_ids_for_relation(this) %}
     {% set log_table_id       = bq_ids['log_table_id'] %}
     {% set target_table_id    = bq_ids['table_id'] %}
 
     {# === Required config === #}
-    {% set run_window_column = config.get('run_window_column', 'insertTime') %} {# e.g. 'insertTime' in your SELECT #}
+    {% set run_window_column = config.get('run_window_column', 'insertTime') %}
     {% if not log_table_id %}
         {% do exceptions.raise_compiler_error("incremental_log: `log_table_id` (project.dataset.table) is required.") %}
     {% endif %}
     {% if not run_window_column %}
         {% do exceptions.raise_compiler_error("incremental_log: `run_window_column` is required and must appear in your SELECT.") %}
     {% endif %}
+    {% set run_window_col_ts = "SAFE_CAST(" ~ run_window_column ~ " AS TIMESTAMP)" %}
+
 
     {# BigQuery/core-aligned knobs #}
     {% set raw_partition_by = config.get('partition_by', none) %}
@@ -39,18 +42,18 @@
     {% set current_run_start = run_started_at %}
 
     {# Log the start of THIS run #}
-    {%- call statement('log_run_started') -%}
-        {{ log_run_started(log_table_id, target_relation, current_run_start, prev_run_start, current_run_start, ids=bq_ids) }}
+    {%- call statement('log_model_run_started') -%}
+        {{ log_model_event(log_table_id, target_relation, 'model_run_started',  prev_run_start, current_run_start, ids=bq_ids, event_ts=model_run_started_time) }}
     {%- endcall -%}
 
     {# Upper bound (applies to all builds) #}
     {% set upper_bound_clause -%}
-        {{ run_window_column }} <= TIMESTAMP('{{ current_run_start }}')
+        {{ run_window_col_ts }} <= TIMESTAMP('{{ current_run_start }}')
     {%- endset %}
 
     {# Lower bound for incrementals: previous run start (we fetched it BEFORE logging this run) #}
     {% set lower_bound_clause -%}
-        {{ run_window_column }} > TIMESTAMP('{{ prev_run_start }}')
+        {{ run_window_col_ts }} > TIMESTAMP('{{ prev_run_start }}')
     {%- endset %}
 
     {# Pre-build the filtered SQL we need in both branches #}
@@ -73,7 +76,6 @@
     {% endset %}
 
     {# === Build paths === #}
-
     {% if (existing_relation is none) or (existing_relation.is_view) or full_refresh_mode %}
 
         {# Drop when needed (view always; table if not replaceable on FR) #}
@@ -90,8 +92,8 @@
             {{ bq_create_table_as(partition_by, False, target_relation, filtered_sql_full) }}
         {%- endcall -%}
 
-        {%- call statement('log_run_success') -%}
-            {{ log_run_success(log_table_id, target_relation, prev_run_start, current_run_start, ids=bq_ids) }}
+        {%- call statement('log_model_run_succeeded') -%}
+            {{ log_model_event(log_table_id, target_relation, 'model_run_succeeded', prev_run_start, current_run_start, ids=bq_ids) }}
         {%- endcall -%}
 
 
@@ -116,8 +118,8 @@
                 select {{ dest_cols_csv }} from {{ tmp_relation }}
             {% endcall %}
 
-            {%- call statement('log_run_success') -%}
-                {{ log_run_success(log_table_id, target_relation, prev_run_start, current_run_start, ids=bq_ids) }}
+            {%- call statement('log_model_run_succeeded') -%}
+                {{ log_model_event(log_table_id, target_relation, 'model_run_succeeded', prev_run_start, current_run_start, ids=bq_ids) }}
             {%- endcall -%}
 
 
@@ -138,8 +140,8 @@
                 ) as __x
             {% endcall %}
 
-            {%- call statement('log_run_success') -%}
-                {{ log_run_success(log_table_id, target_relation, prev_run_start, current_run_start, ids=bq_ids) }}
+            {%- call statement('log_model_run_succeeded') -%}
+                {{ log_model_event(log_table_id, target_relation, 'model_run_succeeded', prev_run_start, current_run_start, ids=bq_ids) }}
             {%- endcall -%}
 
         {% endif %}
