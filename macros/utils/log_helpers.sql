@@ -5,7 +5,7 @@
     {%- set dataset_id = relation.schema -%}
     {%- set table_id   = project_id ~ '.' ~ dataset_id ~ '.' ~ relation.identifier -%}
     {%- set log_table_dataset_id = domain ~ '_dbt_raw' -%}
-    {%- set log_table_name = domain ~ '_dbt_event_log_2' -%}
+    {%- set log_table_name = domain ~ '_dbt_event_log' -%}
     {%- set log_table_id   = project_id ~ '.' ~ log_table_dataset_id ~ '.' ~ log_table_name -%}
 
     {{ return({
