@@ -1,7 +1,7 @@
 {% materialization incremental_log, adapter='bigquery', supported_languages=['sql'] %}
     {% set model_run_started_time = modules.datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f UTC') %}
 
-    {% set bq_ids             = bq_ids_for_relation(this) %}
+    {% set bq_ids             = edna_dbt_lib.bq_ids_for_relation(this) %}
     {% set log_table_id       = bq_ids['log_table_id'] %}
     {% set target_table_id    = bq_ids['table_id'] %}
 
@@ -36,14 +36,14 @@
     {% endif %}
 
     {# Lower bound for incrementals: previous successful run's runWindowEnd #}
-    {% set prev_run_start = get_last_successful_run_start(log_table_id, target_table_id) %}
+    {% set prev_run_start = edna_dbt_lib.get_last_successful_run_start(log_table_id, target_table_id) %}
 
     {# === Establish the run window === #}
     {% set current_run_start = run_started_at %}
 
     {# Log the start of THIS run #}
     {%- call statement('log_model_run_started') -%}
-        {{ log_model_event(log_table_id, target_relation, 'model_run_started',  prev_run_start, current_run_start, ids=bq_ids, event_ts=model_run_started_time) }}
+        {{ edna_dbt_lib.log_model_event(log_table_id, target_relation, 'model_run_started',  prev_run_start, current_run_start, ids=bq_ids, event_ts=model_run_started_time) }}
     {%- endcall -%}
 
     {# Upper bound (applies to all builds) #}
@@ -93,7 +93,7 @@
         {%- endcall -%}
 
         {%- call statement('log_model_run_succeeded') -%}
-            {{ log_model_event(log_table_id, target_relation, 'model_run_succeeded', prev_run_start, current_run_start, ids=bq_ids) }}
+            {{ edna_dbt_lib.log_model_event(log_table_id, target_relation, 'model_run_succeeded', prev_run_start, current_run_start, ids=bq_ids) }}
         {%- endcall -%}
 
 
@@ -119,7 +119,7 @@
             {% endcall %}
 
             {%- call statement('log_model_run_succeeded') -%}
-                {{ log_model_event(log_table_id, target_relation, 'model_run_succeeded', prev_run_start, current_run_start, ids=bq_ids) }}
+                {{ edna_dbt_lib.log_model_event(log_table_id, target_relation, 'model_run_succeeded', prev_run_start, current_run_start, ids=bq_ids) }}
             {%- endcall -%}
 
 
@@ -141,7 +141,7 @@
             {% endcall %}
 
             {%- call statement('log_model_run_succeeded') -%}
-                {{ log_model_event(log_table_id, target_relation, 'model_run_succeeded', prev_run_start, current_run_start, ids=bq_ids) }}
+                {{ edna_dbt_lib.log_model_event(log_table_id, target_relation, 'model_run_succeeded', prev_run_start, current_run_start, ids=bq_ids) }}
             {%- endcall -%}
 
         {% endif %}
