@@ -25,11 +25,11 @@
     {% endif %}
 
     {% if not ids %}
-        {% set ids = bq_ids_for_relation(relation) %}
+        {% set ids = edna_dbt_lib.bq_ids_for_relation(relation) %}
     {% endif %}
 
     {# if you added this helper; otherwise keep your inline env_var handling #}
-    {% set cloud = cloud_env_sql_values() %}
+    {% set cloud = edna_dbt_lib.cloud_env_sql_values() %}
 
     {# use early-captured timestamp if provided; else now() #}
     {% set event_ts_sql = "TIMESTAMP('" ~ event_ts ~ "')" if event_ts else "CURRENT_TIMESTAMP()" %}
