@@ -69,16 +69,40 @@
 
 {# Latest successful run's start time (stored as runWindowEnd for that run in the log table). #}
 {% macro get_last_successful_run_start(log_table_id, table_id, default='0001-01-01 00:00:00 UTC') %}
+    {% set ctx = (env_var('DBT_CLOUD_INVOCATION_CONTEXT', '') or '') | lower %}
+    {% set is_dev_ci = ctx in ['dev', 'ci'] %}
+
+    {% set parts = table_id.split('.') %}
+    {% if parts | length != 3 %}
+        {% do exceptions.raise_compiler_error("get_last_successful_run_start: table_id must be 'project.dataset.table' but was '" ~ table_id ~ "'") %}
+    {% endif %}
+    {% set project_id   = parts[0] %}
+    {% set table_name   = parts[2] %}
+
+    {% set f0 = model.fqn[0] %}
+    {% set f1 = model.fqn[1] %}
+    {% set f2 = model.fqn[2] %}
+
+    {% set ds_suffix = '' if f2 == 'dataproduct' else ('_' ~ f2) %}
+    {% set actual_dataset = f0 ~ '_' ~ f1 ~ ds_suffix %}
+
+    {% set logged_table = (project_id ~ '.' ~ actual_dataset ~ '.' ~ table_name) if is_dev_ci else table_id %}
+
     {%- set q -%}
         select runWindowEnd
         from `{{ log_table_id }}`
-        where bigQueryTableId = '{{ table_id }}'
+        where bigQueryTableId = '{{ logged_table }}'
             and eventType = 'model_run_succeeded'
             and runWindowEnd is not null
         qualify row_number() over (order by runWindowEnd desc) = 1
     {%- endset -%}
     {%- set ts = dbt_utils.get_single_value(q) -%}
-    {{ return(ts or default) }}
+    {% if ts is none and is_dev_ci %}
+        {% set dt = modules.datetime.datetime.utcnow() - modules.datetime.timedelta(hours=24) %}
+        {{ return(dt.strftime('%Y-%m-%d %H:%M:%S.%f UTC')) }}
+    {% else %}
+        {{ return(ts or default) }}
+    {% endif %}
 {% endmacro %}
 
 {# Return SQL-safe values for optional dbt Cloud env vars ('value' or NULL) #}
