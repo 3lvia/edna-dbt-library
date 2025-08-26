@@ -19,6 +19,12 @@
 
 {# Insert a model-scoped event row. #}
 {% macro log_model_event(log_table_id, relation, event_type, window_start, window_end, ids=None, event_ts=None, message=None) %}
+    {# Don't record CI/dev empty runs #}
+    {% if flags.EMPTY %}
+        {% do log("log_model_event: --empty detected; skipping log write for " ~ event_type ~ " on " ~ relation, info=True) %}
+        {{ return("select 1 as empty_run_logging_skipped limit 0") }}
+    {% endif %}
+    
     {% set allowed = ['model_run_started','model_run_succeeded','model_run_failed'] %}
     {% if event_type not in allowed %}
         {% do exceptions.raise_compiler_error("log_model_event: invalid event_type '" ~ event_type ~ "'.") %}

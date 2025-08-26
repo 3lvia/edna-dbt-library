@@ -57,7 +57,7 @@
     {%- endset %}
 
     {% set ctx = (env_var('DBT_CLOUD_INVOCATION_CONTEXT', '') or '') | lower %}
-    {% set is_ci = ctx in ['ci'] %}
+    {% set is_dev_ci = ctx in ['dev', 'ci'] %}
 
     {# Pre-build the filtered SQL we need in both branches #}
     {% set filtered_sql_full %}
@@ -96,7 +96,7 @@
                 partition_by,
                 False,
                 target_relation,
-                (filtered_sql_incr if is_ci else filtered_sql_full)) }}
+                (filtered_sql_incr if is_dev_ci and not full_refresh_mode else filtered_sql_full)) }}
         {%- endcall -%}
 
         {%- call statement('log_model_run_succeeded') -%}
