@@ -36,7 +36,7 @@
     {% endif %}
 
     {# Lower bound for incrementals: previous successful run's runWindowEnd #}
-    {% set prev_run_start = edna_dbt_lib.get_last_successful_run_start(log_table_id, target_table_id) %}
+    {% set prev_run_start = edna_dbt_lib.get_last_successful_run_window_end(log_table_id, target_table_id) %}
 
     {# === Establish the run window === #}
     {% set current_run_start = run_started_at %}
