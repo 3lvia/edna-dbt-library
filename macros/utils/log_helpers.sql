@@ -73,14 +73,14 @@
     ;
 {% endmacro %}
 
-{# Latest successful run's start time (stored as runWindowEnd for that run in the log table). #}
-{% macro get_last_successful_run_start(log_table_id, table_id, default='0001-01-01 00:00:00 UTC') %}
+{# Latest successful run's window end time (stored as runWindowEnd for that run in the log table). #}
+{% macro get_last_successful_run_window_end(log_table_id, table_id, default='0001-01-01 00:00:00 UTC') %}
     {% set ctx = (env_var('DBT_CLOUD_INVOCATION_CONTEXT', '') or '') | lower %}
     {% set is_dev_ci = ctx in ['dev', 'ci'] %}
 
     {% set parts = table_id.split('.') %}
     {% if parts | length != 3 %}
-        {% do exceptions.raise_compiler_error("get_last_successful_run_start: table_id must be 'project.dataset.table' but was '" ~ table_id ~ "'") %}
+        {% do exceptions.raise_compiler_error("get_last_successful_run_window_end: table_id must be 'project.dataset.table' but was '" ~ table_id ~ "'") %}
     {% endif %}
     {% set project_id   = parts[0] %}
     {% set table_name   = parts[2] %}
@@ -128,4 +128,36 @@
         'run_reason':         ("'" ~ cloud_reason   ~ "'") if cloud_reason   else 'NULL',
         'git_sha':            ("'" ~ cloud_git_sha  ~ "'") if cloud_git_sha  else 'NULL'
     }) }}
+{% endmacro %}
+
+{# Wrapper macros for logging model events in pre/post hooks #}
+{% macro log_model_run_started_pre_hook(relation=this, message=None) %}
+    {% set started_ts = modules.datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f UTC') %}
+    {% set ids = edna_dbt_lib.bq_ids_for_relation(relation) %}
+    {% set prev = edna_dbt_lib.get_last_successful_run_window_end(ids['log_table_id'], ids['table_id']) %}
+    {{ edna_dbt_lib.log_model_event(
+        ids['log_table_id'],
+        relation,
+        'model_run_started',
+        prev,
+        run_started_at,
+        ids=ids,
+        event_ts=started_ts,
+        message=message
+        )
+    }}
+{% endmacro %}
+
+{% macro log_model_run_succeeded_post_hook(relation=this, message=None) %}
+    {% set ids = edna_dbt_lib.bq_ids_for_relation(relation) %}
+    {% set prev = edna_dbt_lib.get_last_successful_run_window_end(ids['log_table_id'], ids['table_id']) %}
+    {{ edna_dbt_lib.log_model_event(
+        ids['log_table_id'],
+        relation,
+        'model_run_succeeded',
+        prev,
+        run_started_at,
+        ids=ids,
+        message=message)
+    }}
 {% endmacro %}
