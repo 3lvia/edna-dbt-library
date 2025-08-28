@@ -10,7 +10,7 @@
 -#}
     (    
         SELECT
-            UPPER(CONCAT(
+            LOWER(CONCAT(
                 SUBSTR(hx_vr, 1, 8), '-',
                 SUBSTR(hx_vr, 9, 4), '-',
                 SUBSTR(hx_vr, 13, 4), '-',
