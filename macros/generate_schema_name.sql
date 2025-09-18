@@ -10,7 +10,7 @@
     {%- elif env_var('DBT_CLOUD_INVOCATION_CONTEXT', '') == 'dev'
         and env_var('DBT_PROJECT_IS_POC', 'false') == 'true' -%}
 
-        dbt_user_{{ env_var('DBT_USER_ID', '') }}
+        dbt_cloud_user_{{ env_var('DBT_USER_ID', '') }}
 
     {%- else -%}
 
