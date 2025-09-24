@@ -1,0 +1,414 @@
+---
+version: 2
+
+macros:
+  - name: generate_schema_name
+    description: >
+      Build a target schema name for a model based on the current environment
+      (CI/DEV/PROD), the project's name and the node's FQN. Used to standardize
+      dataset naming for dataproducts and curated models.
+    arguments:
+      - name: custom_schema_name
+        description: An optional custom schema name supplied by the model config.
+        type: string
+      - name: node
+        description: The dbt node object (model) used to inspect FQN and config.
+        type: object
+
+  - name: generate_alias_name
+    description: >
+      Produce a model alias (table name) that optionally includes version
+      information from the dataproduct config or the node.version. If a
+      `custom_alias_name` is provided it is used verbatim.
+    arguments:
+      - name: custom_alias_name
+        description: Optional alias override. Defaults to none.
+        type: string
+      - name: node
+        description: The dbt node object used to read version/config. Defaults to none.
+        type: object
+
+  - name: incremental_log
+    description: >
+      BigQuery materialization that performs incremental loads and writes run
+      events to a provided log table (log_table_id). Supports partitioning and
+      clustering options. (Implemented as a materialization macro.)
+    arguments:
+      - name: log_table_id
+        description: Fully-qualified log table id (project.dataset.table) used
+          to store run events.
+        type: string
+
+  - name: validate_dataproduct
+    description: >
+      Validate that a model configured as a dataproduct meets registration
+      expectations: preview where clause syntax, same-dataset placement,
+      column additions/removals and semantic versioning.
+    arguments: []
+
+  - name: register_dataproduct_metadata
+    description: >
+      Register or upsert metadata about a dataproduct into a central
+      dataplatform table. Captures description, display name, owner, columns,
+      labels, size info and version information.
+    arguments: []
+
+  - name: is_defined
+    description: >
+      Utility that returns true when a value is defined, not None, and not an
+      empty string. Helpful when interrogating config objects.
+    arguments:
+      - name: item
+        description: Value to test
+        type: any
+
+  - name: create_tmp_relation
+    description: >
+      Create a temporary view relation from compiled SQL. Returns a Relation
+      object representing the temporary view. Useful in validation flows where
+      a compiled query needs to be inspected.
+    arguments:
+      - name: compiled_sql
+        description: Compiled SQL to create as a temporary view.
+        type: string
+      - name: target_relation
+        description: Target relation used to derive schema/database for the tmp view.
+        type: object
+
+  - name: _string_or_null
+    description: "Return the quoted string or the SQL literal `null` if not defined."
+    arguments:
+      - name: stringvalue
+        description: Candidate string value
+        type: string
+
+  - name: _get_sizeinfo
+    description: >
+      Query BigQuery's `__TABLES__` metadata to return row count and size bytes
+      for a given `target_relation`.
+    arguments:
+      - name: target_relation
+        description: Relation to inspect
+        type: object
+
+  - name: _get_formated_columns
+    description: >
+      Return a JSON-like formatted list of columns (field_path, data_type,
+      description) for the target relation using INFORMATION_SCHEMA.
+    arguments:
+      - name: target_relation
+        description: Relation to pull columns from.
+        type: object
+
+  - name: _get_formated_labels
+    description: >
+      Convert a dictionary of labels into a formatted list suitable for
+      metadata upserts.
+    arguments:
+      - name: label_dict
+        description: Dictionary of labels (key -> value)
+        type: dict
+
+  - name: _upsert_dataproduct_entry
+    description: >
+      Internal helper that performs a merge/upsert into the central
+      dataproducts metadata table. Expects already-formatted column and label
+      payloads.
+    arguments:
+      - name: description
+        description: Dataproduct description text
+        type: string
+      - name: display_name
+        description: Human-readable name for the dataproduct
+        type: string
+      - name: domain
+        description: Domain/project name
+        type: string
+      - name: dataproduct_group
+        description: Dataproduct group classification
+        type: string
+      - name: bq_dataset
+        description: BigQuery dataset name
+        type: string
+      - name: bq_tablename
+        description: BigQuery table name
+        type: string
+      - name: dbt_id
+        description: Unique dbt model identifier
+        type: string
+      - name: owner
+        description: Dataproduct owner
+        type: string
+      - name: columns
+        description: Formatted column metadata string
+        type: string
+      - name: labels
+        description: Formatted labels string
+        type: string
+      - name: size_info
+        description: Object containing row_count and size_bytes
+        type: object
+      - name: preview_where_clause
+        description: Optional WHERE clause for data preview
+        type: string
+      - name: version
+        description: Semantic version string
+        type: string
+      - name: versionDescription
+        description: Description of version changes
+        type: string
+      - name: name
+        description: Model name
+        type: string
+
+  - name: _validate_preview_where_clause
+    description: >
+      Validate the user-supplied previewWhereClause for basic syntactic
+      correctness and safety before it is stored/used.
+    arguments:
+      - name: preview_where_clause
+        description: SQL where clause fragment
+        type: string
+
+  - name: _validate_is_in_dataproduct_dataset
+    description: >
+      Ensure the target_relation resides in a dataset reserved for
+      dataproducts; used as part of registration/validation flows.
+    arguments:
+      - name: target_relation
+        description: dbt relation object to validate
+        type: object
+
+  - name: _is_registered_dataproduct
+    description: >
+      Returns whether a target relation is already present in the
+      dataproducts table (registered).
+    arguments:
+      - name: target_relation
+        description: dbt relation object to check registration status
+        type: object
+
+  - name: _check_for_column_deletion_and_descriptions
+    description: >
+      Inspect compiled SQL and existing relation to detect column deletions and
+      missing descriptions when comparing registered schemas to new outputs.
+    arguments:
+      - name: compiled_sql
+        type: string
+      - name: target_relation
+        type: object
+      - name: is_registered
+        type: boolean
+
+  - name: _get_missing_columns
+    description: >
+      Return a list of columns that are present in the registered schema but
+      missing from the new model output.
+    arguments:
+      - name: target_columns
+        type: list
+      - name: new_columns
+        type: list
+
+  - name: _get_columns_from_relation
+    description: >
+      Read column metadata from INFORMATION_SCHEMA for a given relation and
+      return it in a consumable structure.
+    arguments:
+      - name: relation
+        description: dbt relation object to extract column information from
+        type: object
+
+  - name: _validate_semantic_versioning
+    description: >
+      Validate that a version string conforms to a simple semantic versioning
+      expectation used by dataproducts (major[.minor[.patch]]).
+    arguments:
+      - name: v
+        description: Version string to validate (e.g., "1.0.0")
+        type: string
+
+  - name: bytes4_to_int32
+    description: Convert a 4-byte expression (e.g., from hex) to a 32-bit integer.
+    arguments:
+      - name: byte_value
+        type: string
+
+  - name: base64_map
+    description: Extract the base64 byte at `index` from `b64_str` (string of base64 hex representation).
+    arguments:
+      - name: b64_str
+        type: string
+      - name: index
+        type: integer
+      - name: zero_based
+        type: boolean
+
+  - name: hex_map
+    description: Extract the hex byte at `index` from a hex string.
+    arguments:
+      - name: hex_str
+        type: string
+      - name: index
+        type: integer
+      - name: zero_based
+        type: boolean
+
+  - name: reverse_hex_bytes
+    description: Reverse byte order of a hex expression (useful for endian conversions).
+    arguments:
+      - name: hex_expr
+        type: string
+      - name: add_0x
+        type: boolean
+
+  - name: hex_to_int
+    description: Convert a hexadecimal string value to an integer.
+    arguments:
+      - name: hex_val
+        type: string
+
+  - name: digit_to_bitstring
+    description: Convert a digit (in given base) to a bitstring representation.
+    arguments:
+      - name: digit
+        type: integer
+      - name: base
+        type: integer
+
+  - name: value_to_bitstring
+    description: Convert an integer value to a fixed-width bitstring.
+    arguments:
+      - name: value
+        type: integer
+      - name: width
+        type: integer
+
+  - name: bitstring_to_int
+    description: Convert a bitstring to an integer value.
+    arguments:
+      - name: bitstr
+        type: string
+
+  - name: double_unbiased_exponent
+    description: Compute an unbiased exponent from the stored exponent bits of a double.
+    arguments:
+      - name: exp_bits
+        type: string
+
+  - name: double_mantissa
+    description: Compute the mantissa value from fraction bits for a double-precision float.
+    arguments:
+      - name: frac_bits
+        type: string
+
+  - name: double_from_components
+    description: Reconstruct a double-precision floating value from sign, mantissa and unbiased exponent.
+    arguments:
+      - name: sign
+        type: integer
+      - name: mantissa
+        type: number
+      - name: unbiased_exponent
+        type: integer
+
+  - name: uuid_v5
+    description: Generate a UUIDv5 from a name expression and a namespace UUID.
+    arguments:
+      - name: name_expr
+        description: The name expression to generate the UUID from.
+        type: string
+      - name: namespace_uuid
+        description: The namespace UUID to use for generation.
+        type: string
+
+  - name: bq_ids_for_relation
+    description: >
+      Helper that extracts BigQuery identifiers for a relation (log_table_id,
+      table_id, etc.) from model config or environment to be used in logging.
+    arguments:
+      - name: relation
+        description: The dbt relation object to extract BigQuery identifiers from.
+        type: object
+
+  - name: log_model_event
+    description: >
+      Insert a run event (model_run_started, model_run_succeeded, etc.) into
+      the configured log table. Accepts optional ids and event timestamp.
+    arguments:
+      - name: log_table_id
+        description: Fully-qualified log table id (project.dataset.table) to insert the event into.
+        type: string
+      - name: relation
+        description: The dbt relation object representing the model.
+        type: object
+      - name: event_type
+        description: Type of event (e.g., model_run_started, model_run_succeeded).
+        type: string
+      - name: window_start
+        description: Start timestamp of the event window.
+        type: string
+      - name: window_end
+        description: End timestamp of the event window.
+        type: string
+      - name: ids
+        description: Optional ids object for logging. Defaults to None.
+        type: object
+      - name: event_ts
+        description: Optional event timestamp. Defaults to None.
+        type: string
+      - name: message
+        description: Optional message for the event. Defaults to None.
+        type: string
+
+  - name: get_last_successful_run_window_end
+    description: >
+      Query the log table to get the last successful run's window_end for the
+      given table_id. Returns a timestamp string or a provided default.
+    arguments:
+      - name: log_table_id
+        description: Fully-qualified log table id (project.dataset.table) to query.
+        type: string
+      - name: table_id
+        description: The table_id to find the last successful run for.
+        type: string
+      - name: default
+        description: Default timestamp to return if no successful run is found. Defaults to '0001-01-01 00:00:00 UTC'.
+        type: string
+
+  - name: cloud_env_sql_values
+    description: >
+      Return a tuple of SQL literal values that encode the current cloud/dbt
+      environment (project, user, invocation context) for insertion into log
+      records.
+    arguments: []
+
+  - name: log_model_run_started_pre_hook
+    description: >
+      A pre-hook helper that logs the start of a model run to the configured
+      log table. Intended to be used in `pre-hook` model configuration.
+    arguments:
+      - name: relation
+        description: The dbt relation object. Defaults to 'this'.
+        type: object
+      - name: message
+        description: Optional custom message for the log event. Defaults to None.
+        type: string
+
+  - name: log_model_run_succeeded_post_hook
+    description: >
+      A post-hook helper that logs successful completion of a model run.
+    arguments:
+      - name: relation
+        description: The dbt relation object. Defaults to 'this'.
+        type: object
+      - name: message
+        description: Optional custom message for the log event. Defaults to None.
+        type: string
+
+  - name: quote_replace
+    description: Escape single and double quotes in a string for safe SQL usage.
+    arguments:
+      - name: string
+        description: The input string to escape quotes in.
+        type: string
