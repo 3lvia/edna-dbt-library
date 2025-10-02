@@ -2,13 +2,11 @@
 
     {%- set default_schema = target.schema -%}
 
-    {% if env_var('DBT_CLOUD_INVOCATION_CONTEXT', '') == 'ci'
-        and env_var('DBT_PROJECT_IS_POC', 'false') == 'true' %}
+    {% if env_var('DBT_CLOUD_INVOCATION_CONTEXT', '') == 'ci' %}
 
         {{ default_schema }}
 
-    {%- elif env_var('DBT_CLOUD_INVOCATION_CONTEXT', '') == 'dev'
-        and env_var('DBT_PROJECT_IS_POC', 'false') == 'true' -%}
+    {%- elif env_var('DBT_CLOUD_INVOCATION_CONTEXT', '') == 'dev' -%}
 
         dbt_cloud_user_{{ env_var('DBT_USER_ID', '') }}
 
