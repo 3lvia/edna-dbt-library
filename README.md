@@ -116,7 +116,7 @@ Returns the string value wrapped in quotes if defined, otherwise 'null'.
 
 ##### `get_deployed_relation(target_relation)`
 
-Returns the deployed relation for the target, adjusting schema names based on environment and FQN structure for dev/ci vs production environments.
+Returns the deployed relation for the target. Adjusts schema names only in dev/ci environments based on invocation context and FQN structure; uses the standard schema otherwise.
 
 ##### `_get_sizeinfo(target_relation)`
 
