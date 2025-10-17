@@ -78,10 +78,9 @@ macros:
 
   - name: get_deployed_relation
     description: >
-      Returns the deployed relation for the target, adjusting schema names based
-      on environment and FQN structure for dev/ci vs production environments.
-      In dev/ci environments, returns the target relation unchanged. In production,
-      constructs the schema name from the FQN components (domain, group, layer).
+      Returns the deployed relation for the target, adjusting schema names based on invocation context using FQN structure.
+      In invocation contexts equal to dev or ci, constructs the schema name from the FQN components (domain, group, layer).
+      Else, returns the target relation unchanged as this will be equal to the deployed relation.
     arguments:
       - name: target_relation
         description: The target relation to adjust for deployment environment.
