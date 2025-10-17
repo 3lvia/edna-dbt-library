@@ -50,7 +50,8 @@ macros:
     description: >
       Register or upsert metadata about a dataproduct into a central
       dataplatform table. Captures description, display name, owner, columns,
-      labels, size info and version information.
+      labels, size info and version information. 
+      Currently not used. Replaced by edna-data-api.DataproductAggregation.
     arguments: []
 
   - name: is_defined
@@ -73,6 +74,17 @@ macros:
         type: string
       - name: target_relation
         description: Target relation used to derive schema/database for the tmp view.
+        type: object
+
+  - name: get_deployed_relation
+    description: >
+      Returns the deployed relation for the target, adjusting schema names based
+      on environment and FQN structure for dev/ci vs production environments.
+      In dev/ci environments, returns the target relation unchanged. In production,
+      constructs the schema name from the FQN components (domain, group, layer).
+    arguments:
+      - name: target_relation
+        description: The target relation to adjust for deployment environment.
         type: object
 
   - name: _string_or_null

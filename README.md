@@ -20,6 +20,7 @@ This repository contains reusable macros and materializations for dbt projects.
         - [`is_defined(item)`](#is_defineditem)
         - [`create_tmp_relation(compiled_sql, target_relation)`](#create_tmp_relationcompiled_sql-target_relation)
         - [`_string_or_null(stringvalue)`](#_string_or_nullstringvalue)
+        - [`get_deployed_relation(target_relation)`](#get_deployed_relationtarget_relation)
         - [`_get_sizeinfo(target_relation)`](#_get_sizeinfotarget_relation)
         - [`_get_formated_columns(target_relation)`](#_get_formated_columnstarget_relation)
         - [`_get_formated_labels(label_dict)`](#_get_formated_labelslabel_dict)
@@ -112,6 +113,10 @@ Creates a temporary view relation for the given compiled SQL.
 ##### `_string_or_null(stringvalue)`
 
 Returns the string value wrapped in quotes if defined, otherwise 'null'.
+
+##### `get_deployed_relation(target_relation)`
+
+Returns the deployed relation for the target, adjusting schema names based on environment and FQN structure for dev/ci vs production environments.
 
 ##### `_get_sizeinfo(target_relation)`
 

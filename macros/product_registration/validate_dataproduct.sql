@@ -43,16 +43,19 @@
 {% endmacro %}
 
 {% macro _validate_is_in_dataproduct_dataset(target_relation) %}
-    {%- if target_relation.schema.split('_')[-1] == 'curated' -%}
+    {% set deployed_relation = edna_dbt_lib.get_deployed_relation(target_relation) %}
+
+    {%- if deployed_relation.schema.split('_')[-1] == 'curated' -%}
         {{ exceptions.raise_compiler_error(
             "Models for registered dataproducts must be in a subfolder called dataproduct under your dataproductgroup. e.g: models/example/dataproduct/mymodel.sql") }}
     {%- endif -%}
 {% endmacro %}
 
 {% macro _is_registered_dataproduct(target_relation) %}
+    {% set deployed_relation = edna_dbt_lib.get_deployed_relation(target_relation) %}
     {% set query %}
         select count(1) FROM dataplatform_internal.dataproducts
-        where bigquery = ('{{ target_relation.schema }}', '{{ target_relation.identifier }}')
+        where bigquery = ('{{ deployed_relation.schema }}', '{{ deployed_relation.identifier }}')
     {% endset %}
 
     {% set cnt = run_query(query).columns[0].values()[0] %}
@@ -61,16 +64,17 @@
 {% endmacro %}
 
 {% macro _check_for_column_deletion_and_descriptions(compiled_sql, target_relation, is_registered) %}
+    {% set deployed_relation = edna_dbt_lib.get_deployed_relation(target_relation) %}
     {% set tmp_relation = edna_dbt_lib.create_tmp_relation(compiled_sql, target_relation) %}
 
     {% set new_columns = edna_dbt_lib._get_columns_from_relation(tmp_relation) %}
     {% do adapter.drop_relation(tmp_relation) %}
 
-    {% set old_columns = edna_dbt_lib._get_columns_from_relation(target_relation) %}
+    {% set old_columns = edna_dbt_lib._get_columns_from_relation(deployed_relation) %}
 
     {% set missing_columns = edna_dbt_lib._get_missing_columns(old_columns, new_columns) %}
     
-    {% if is_registered  and missing_columns | length > 0 %}
+    {% if is_registered and missing_columns | length > 0 %}
         {{ exceptions.raise_compiler_error("Schema of registered dataproduct can't be changed. Missing columns: " 
                                                 ~ missing_columns
                                                 | map(attribute="name")
@@ -89,7 +93,7 @@
 {% macro _get_missing_columns(target_columns, new_columns) %}
     {% set missing_columns = [] %}
     {% for column in target_columns %}
-        {% if not column in new_columns and not( 'RECORD' in column.dtype or 'STRUCT' in column.dtype )%}
+        {% if not column in new_columns and not ('RECORD' in column.dtype or 'STRUCT' in column.dtype) %}
             {% do missing_columns.append(column) %}
         {% endif %}
     {% endfor %}
