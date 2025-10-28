@@ -36,6 +36,7 @@ macros:
 
       **Config options (set via `config()` in models):**
       - `run_window_column` *(string, default: `insertTime`)* - timestamp column used for incremental windowing.
+      - `backfill_interval_days` *(string, optional)* - maximum number of days to backfill from the last successful run. If the time since the last successful run exceeds this interval, the current run window end will be limited to prevent excessive data loading.
       - `partition_by` *(dict|string)* - standard BigQuery partitioning config.
       - `cluster_by` *(list|string)* - standard BigQuery clustering config.
       - `on_schema_change` *(string, default: `ignore`)* - schema-change handling mode.
@@ -397,6 +398,22 @@ macros:
       records.
     arguments: []
 
+  - name: apply_backfill_interval_limit
+    description: >
+      Apply a backfill interval limit to the window_end timestamp. If backfill_interval_days
+      is provided and greater than 0, and window_start is available, the window_end will be
+      capped at window_start + backfill_interval_days to prevent excessive data loading.
+    arguments:
+      - name: window_start
+        description: The start timestamp of the window (string in 'YYYY-MM-DD HH:MM:SS UTC' format).
+        type: string
+      - name: window_end
+        description: The proposed end timestamp of the window.
+        type: string
+      - name: backfill_interval_days
+        description: Optional number of days to limit backfill. If not provided or 0, no limit is applied.
+        type: integer
+
   - name: log_model_run_started_pre_hook
     description: >
       A pre-hook helper that logs the start of a model run to the configured
@@ -408,6 +425,9 @@ macros:
       - name: message
         description: Optional custom message for the log event. Defaults to None.
         type: string
+      - name: backfill_interval_days
+        description: Optional maximum number of days to backfill from the last successful run. If provided, limits the window end to prevent excessive data loading.
+        type: string
 
   - name: log_model_run_succeeded_post_hook
     description: >
@@ -418,6 +438,9 @@ macros:
         type: object
       - name: message
         description: Optional custom message for the log event. Defaults to None.
+        type: string
+      - name: backfill_interval_days
+        description: Optional maximum number of days to backfill from the last successful run. If provided, limits the window end to prevent excessive data loading.
         type: string
 
   - name: quote_replace
