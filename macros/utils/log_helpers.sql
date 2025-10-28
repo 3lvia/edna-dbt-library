@@ -174,9 +174,9 @@
         {% set backfill_days = backfill_interval_days | int %}
         {% if backfill_days > 0 and window_start %}
             {% set max_backfill_end = modules.datetime.datetime.strptime(window_start, '%Y-%m-%d %H:%M:%S.%f UTC') + modules.datetime.timedelta(days=backfill_days) %}
-            {% set max_backfill_end_str = max_backfill_end.strftime('%Y-%m-%d %H:%M:%S.%f UTC') %}
-            {% if window_end > max_backfill_end_str %}
-                {% set window_end = max_backfill_end_str %}
+            {% set window_end_dt = modules.datetime.datetime.strptime(window_end, '%Y-%m-%d %H:%M:%S.%f UTC') %}
+            {% if window_end_dt > max_backfill_end %}
+                {% set window_end = max_backfill_end.strftime('%Y-%m-%d %H:%M:%S.%f UTC') %}
             {% endif %}
         {% endif %}
     {% endif %}
