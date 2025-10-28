@@ -441,7 +441,7 @@ macros:
         type: string
       - name: backfill_interval_days
         description: Optional maximum number of days to backfill from the last successful run. If provided, limits the window end to prevent excessive data loading.
-        type: string
+        type: integer
 
   - name: quote_replace
     description: Escape single and double quotes in a string for safe SQL usage.
