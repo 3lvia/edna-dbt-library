@@ -404,15 +404,15 @@ macros:
       is provided and greater than 0, and window_start is available, the window_end will be
       capped at window_start + backfill_interval_days to prevent excessive data loading.
     arguments:
+      - name: backfill_interval_days
+        description: Optional number of days to limit backfill. If not provided or 0, no limit is applied.
+        type: integer
       - name: window_start
         description: The start timestamp of the window (string in 'YYYY-MM-DD HH:MM:SS UTC' format).
         type: string
       - name: window_end
         description: The proposed end timestamp of the window.
         type: string
-      - name: backfill_interval_days
-        description: Optional number of days to limit backfill. If not provided or 0, no limit is applied.
-        type: integer
 
   - name: log_model_run_started_pre_hook
     description: >
