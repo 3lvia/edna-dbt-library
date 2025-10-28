@@ -234,7 +234,7 @@ Retrieves the end timestamp of the last successful run for a table.
 
 Returns SQL values representing the current cloud environment.
 
-##### `apply_backfill_interval_limit(window_start, window_end, backfill_interval_days)`
+##### `apply_backfill_interval_limit(backfill_interval_days, window_start, window_end)`
 
 Applies a backfill interval limit to the window_end timestamp. If backfill_interval_days is provided and greater than 0, and window_start is available, the window_end will be capped at window_start + backfill_interval_days to prevent excessive data loading.
 
