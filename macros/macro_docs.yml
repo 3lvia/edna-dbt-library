@@ -411,7 +411,7 @@ macros:
         description: The start timestamp of the window (string in 'YYYY-MM-DD HH:MM:SS.%f UTC' format).
         type: string
       - name: window_end
-        description: The proposed end timestamp of the window.
+        description: The proposed end timestamp of the window (string in 'YYYY-MM-DD HH:MM:SS UTC' format).
         type: string
 
   - name: log_model_run_started_pre_hook
