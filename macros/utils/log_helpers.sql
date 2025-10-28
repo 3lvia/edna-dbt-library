@@ -136,7 +136,7 @@
     {% set ids = edna_dbt_lib.bq_ids_for_relation(relation) %}
 
     {% set window_start = edna_dbt_lib.get_last_successful_run_window_end(ids['log_table_id'], ids['table_id']) %}
-    {% set window_end = edna_dbt_lib.apply_backfill_interval_limit(window_start, run_started_at, backfill_interval_days) %}
+    {% set window_end = edna_dbt_lib.apply_backfill_interval_limit(backfill_interval_days, window_start, run_started_at) %}
 
     {{ edna_dbt_lib.log_model_event(
         ids['log_table_id'],
