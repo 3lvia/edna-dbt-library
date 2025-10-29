@@ -408,10 +408,10 @@ macros:
         description: Optional number of days to limit loading. If not provided or 0, no limit is applied.
         type: integer
       - name: window_start
-        description: The start timestamp of the window (string in 'YYYY-MM-DD HH:MM:SS UTC' format).
+        description: The start timestamp of the window (string in 'YYYY-MM-DD HH:MM:SS.%f UTC' format).
         type: string
       - name: window_end
-        description: The proposed end timestamp of the window.
+        description: The proposed end timestamp of the window (string in 'YYYY-MM-DD HH:MM:SS UTC' format).
         type: string
 
   - name: get_earliest_partition_timestamp
