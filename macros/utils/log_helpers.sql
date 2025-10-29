@@ -77,6 +77,8 @@
 {% macro get_last_successful_run_window_end(log_table_id, table_id, default='0001-01-01 00:00:00 UTC') %}
     {% set ctx = (env_var('DBT_CLOUD_INVOCATION_CONTEXT', '') or '') | lower %}
     {% set is_dev_ci = ctx in ['dev', 'ci'] %}
+    {% set source_dataset_id = config.get('source_dataset_id', none) %}
+    {% set source_table_id = config.get('source_table_id', none) %}
 
     {% set parts = table_id.split('.') %}
     {% if parts | length != 3 %}
@@ -106,6 +108,8 @@
     {% if ts is none and is_dev_ci %}
         {% set dt = modules.datetime.datetime.utcnow() - modules.datetime.timedelta(hours=24) %}
         {{ return(dt.strftime('%Y-%m-%d %H:%M:%S.%f UTC')) }}
+    {% elif ts is none and source_table_id is not none %}
+        {{ return(get_earliest_partition_timestamp(project_id, source_dataset_id, source_table_id)) }}
     {% else %}
         {{ return(ts or default) }}
     {% endif %}
@@ -131,12 +135,12 @@
 {% endmacro %}
 
 {# Wrapper macros for logging model events in pre/post hooks #}
-{% macro log_model_run_started_pre_hook(relation=this, message=None, backfill_interval_days=None) %}
+{% macro log_model_run_started_pre_hook(relation=this, message=None, load_interval_days=None) %}
     {% set started_ts = modules.datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f UTC') %}
     {% set ids = edna_dbt_lib.bq_ids_for_relation(relation) %}
 
     {% set window_start = edna_dbt_lib.get_last_successful_run_window_end(ids['log_table_id'], ids['table_id']) %}
-    {% set window_end = edna_dbt_lib.apply_backfill_interval_limit(backfill_interval_days, window_start, run_started_at) %}
+    {% set window_end = edna_dbt_lib.apply_load_interval_limit(load_interval_days, window_start, run_started_at) %}
 
     {{ edna_dbt_lib.log_model_event(
         ids['log_table_id'],
@@ -151,11 +155,11 @@
     }}
 {% endmacro %}
 
-{% macro log_model_run_succeeded_post_hook(relation=this, message=None, backfill_interval_days=None) %}
+{% macro log_model_run_succeeded_post_hook(relation=this, message=None, load_interval_days=None) %}
     {% set ids = edna_dbt_lib.bq_ids_for_relation(relation) %}
 
     {% set window_start = edna_dbt_lib.get_last_successful_run_window_end(ids['log_table_id'], ids['table_id']) %}
-    {% set window_end = edna_dbt_lib.apply_backfill_interval_limit(backfill_interval_days, window_start, run_started_at) %}
+    {% set window_end = edna_dbt_lib.apply_load_interval_limit(load_interval_days, window_start, run_started_at) %}
 
     {{ edna_dbt_lib.log_model_event(
         ids['log_table_id'],
@@ -168,17 +172,51 @@
     }}
 {% endmacro %}
 
-{# Apply backfill interval limit to window_end if configured #}
-{% macro apply_backfill_interval_limit(backfill_interval_days, window_start, window_end=run_started_at) %}
-    {% if backfill_interval_days %}
-        {% set backfill_days = backfill_interval_days | int %}
-        {% if backfill_days > 0 and window_start %}
-            {% set max_backfill_end = modules.datetime.datetime.strptime(window_start, '%Y-%m-%d %H:%M:%S.%f UTC') + modules.datetime.timedelta(days=backfill_days) %}
-            {% set window_end_dt = modules.datetime.datetime.strptime(window_end, '%Y-%m-%d %H:%M:%S.%f UTC') %}
-            {% if window_end_dt > max_backfill_end %}
-                {% set window_end = max_backfill_end.strftime('%Y-%m-%d %H:%M:%S.%f UTC') %}
+{# Apply load interval limit to window_end if configured #}
+{% macro apply_load_interval_limit(load_interval_days, window_start, window_end=run_started_at) %}
+    {% if load_interval_days %}
+        {% set load_days = load_interval_days | int %}
+        {% if load_days > 0 and window_start %}
+            {% set max_load_end = modules.datetime.datetime.strptime(window_start, '%Y-%m-%d %H:%M:%S.%f UTC') + modules.datetime.timedelta(days=load_days) %}
+            {% if window_end is string %}
+                {% set window_end_dt = modules.datetime.datetime.strptime(window_end, '%Y-%m-%d %H:%M:%S.%f UTC') %}
+            {% else %}
+                {% set window_end_dt = window_end.replace(tzinfo=None) if window_end.tzinfo else window_end %}
+            {% endif %}
+            {% if max_load_end < window_end_dt %}
+                {% set window_end = max_load_end.strftime('%Y-%m-%d %H:%M:%S.%f UTC') %}
             {% endif %}
         {% endif %}
     {% endif %}
     {{ return(window_end) }}
+{% endmacro %}
+
+{# Get the earliest partition timestamp from INFORMATION_SCHEMA.PARTITIONS for a given table #}
+{% macro get_earliest_partition_timestamp(project_id, dataset_id, table_name) %}
+    {%- set q -%}
+        select
+            min(partition_id) AS earliest_partition
+        from
+            `{{ project_id }}.{{ dataset_id }}.INFORMATION_SCHEMA.PARTITIONS`
+        where
+            table_name = '{{ table_name }}'
+            and partition_id is not null
+            and partition_id != '__NULL__'
+            and partition_id != '__UNPARTITIONED__'
+    {%- endset -%}
+    {%- set partition_id = dbt_utils.get_single_value(q) -%}
+    {% if partition_id and partition_id | length == 8 %}
+        {# Assume YYYYMMDD format for daily partitions, convert to timestamp #}
+        {% set year = partition_id[0:4] %}
+        {% set month = partition_id[4:6] %}
+        {% set day = partition_id[6:8] %}
+        {% set partition_str = year ~ '-' ~ month ~ '-' ~ day ~ ' 00:00:00.000000 UTC' %}
+        {% set partition_date = modules.datetime.datetime.strptime(partition_str, '%Y-%m-%d %H:%M:%S.%f UTC') %}
+        {# Return timestamp just before partition start to include data at partition boundary #}
+        {% set adjusted_timestamp = partition_date - modules.datetime.timedelta(microseconds=1) %}
+        {% set timestamp_str = adjusted_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f UTC') %}
+        {{ return(timestamp_str) }}
+    {% else %}
+        {{ return(none) }}
+    {% endif %}
 {% endmacro %}

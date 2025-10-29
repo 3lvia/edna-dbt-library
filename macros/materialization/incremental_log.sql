@@ -14,7 +14,7 @@
         {% do exceptions.raise_compiler_error("incremental_log: `run_window_column` is required and must appear in your SELECT.") %}
     {% endif %}
     {% set run_window_col_ts = "SAFE_CAST(" ~ run_window_column ~ " AS TIMESTAMP)" %}
-    {% set backfill_interval_days = config.get('backfill_interval_days', none) %}
+    {% set load_interval_days = config.get('load_interval_days', none) %}
 
 
     {# BigQuery/core-aligned knobs #}
@@ -40,7 +40,7 @@
     {% set prev_run_window_end = edna_dbt_lib.get_last_successful_run_window_end(log_table_id, target_table_id) %}
 
     {# === Establish the run window === #}
-    {% set current_run_window_end = edna_dbt_lib.apply_backfill_interval_limit(backfill_interval_days, prev_run_window_end, run_started_at) %}
+    {% set current_run_window_end = edna_dbt_lib.apply_load_interval_limit(load_interval_days, prev_run_window_end, run_started_at) %}
 
     {# Log the start of THIS run #}
     {%- call statement('log_model_run_started') -%}

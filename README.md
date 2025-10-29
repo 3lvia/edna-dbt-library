@@ -52,8 +52,8 @@ This repository contains reusable macros and materializations for dbt projects.
         - [`log_model_event(log_table_id, relation, event_type, window_start, window_end, ids=None, event_ts=None, message=None)`](#log_model_eventlog_table_id-relation-event_type-window_start-window_end-idsnone-event_tsnone-messagenone)
         - [`get_last_successful_run_window_end(log_table_id, table_id, default='0001-01-01 00:00:00 UTC')`](#get_last_successful_run_window_endlog_table_id-table_id-default0001-01-01-000000-utc)
         - [`cloud_env_sql_values()`](#cloud_env_sql_values)
-        - [`log_model_run_started_pre_hook(relation=this, message=None, backfill_interval_days=None)`](#log_model_run_started_pre_hookrelationthis-messagenone-backfill_interval_daysnone)
-        - [`log_model_run_succeeded_post_hook(relation=this, message=None, backfill_interval_days=None)`](#log_model_run_succeeded_post_hookrelationthis-messagenone-backfill_interval_daysnone)
+        - [`log_model_run_started_pre_hook(relation=this, message=None, load_interval_days=None)`](#log_model_run_started_pre_hookrelationthis-messagenone-load_interval_daysnone)
+        - [`log_model_run_succeeded_post_hook(relation=this, message=None, load_interval_days=None)`](#log_model_run_succeeded_post_hookrelationthis-messagenone-load_interval_daysnone)
       - [Quote Replace](#quote-replace)
         - [`quote_replace(string)`](#quote_replacestring)
   - [Examples](#examples)
@@ -88,7 +88,7 @@ Generates alias names for models, optionally incorporating versioning informatio
 
 #### `incremental_log`
 
-A BigQuery-specific materialization for incremental loads that includes logging of model run events. Supports partitioning and clustering configurations. Can be configured with `backfill_interval_days` to limit the maximum time window for backfilling data from the last successful run.
+A BigQuery-specific materialization for incremental loads that includes logging of model run events. Supports partitioning and clustering configurations. Can be configured with `load_interval_days` to limit the maximum time window for loading data from the last successful run.
 
 ### Product Registration
 
@@ -234,15 +234,19 @@ Retrieves the end timestamp of the last successful run for a table.
 
 Returns SQL values representing the current cloud environment.
 
-##### `apply_backfill_interval_limit(backfill_interval_days, window_start, window_end)`
+##### `apply_load_interval_limit(load_interval_days, window_start, window_end=run_started_at)`
 
-Applies a backfill interval limit to the window_end timestamp. If backfill_interval_days is provided and greater than 0, and window_start is available, the window_end will be capped at window_start + backfill_interval_days to prevent excessive data loading.
+Applies a load interval limit to the window_end timestamp. If load_interval_days is provided and greater than 0, and window_start is available, the window_end will be capped at window_start + load_interval_days to prevent excessive data loading.
 
-##### `log_model_run_started_pre_hook(relation=this, message=None, backfill_interval_days=None)`
+##### `get_earliest_partition_timestamp(project_id, dataset_id, table_name)`
+
+Gets the earliest partition timestamp from INFORMATION_SCHEMA.PARTITIONS for a given BigQuery table. Returns a timestamp just before the partition start (partition_date - 1 microsecond) to ensure all data at the partition boundary is included in incremental loads.
+
+##### `log_model_run_started_pre_hook(relation=this, message=None, load_interval_days=None)`
 
 Pre-hook macro to log the start of a model run.
 
-##### `log_model_run_succeeded_post_hook(relation=this, message=None, backfill_interval_days=None)`
+##### `log_model_run_succeeded_post_hook(relation=this, message=None, load_interval_days=None)`
 
 Post-hook macro to log the successful completion of a model run.
 
