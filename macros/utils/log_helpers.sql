@@ -135,12 +135,12 @@
 {% endmacro %}
 
 {# Wrapper macros for logging model events in pre/post hooks #}
-{% macro log_model_run_started_pre_hook(relation=this, message=None, load_interval_days=None) %}
+{% macro log_model_run_started_pre_hook(relation=this, message=None, max_history_load_days=None) %}
     {% set started_ts = modules.datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f UTC') %}
     {% set ids = edna_dbt_lib.bq_ids_for_relation(relation) %}
 
     {% set window_start = edna_dbt_lib.get_last_successful_run_window_end(ids['log_table_id'], ids['table_id']) %}
-    {% set window_end = edna_dbt_lib.apply_load_interval_limit(load_interval_days, window_start, run_started_at) %}
+    {% set window_end = edna_dbt_lib.apply_history_load_limit(max_history_load_days, window_start, run_started_at) %}
 
     {{ edna_dbt_lib.log_model_event(
         ids['log_table_id'],
@@ -155,11 +155,11 @@
     }}
 {% endmacro %}
 
-{% macro log_model_run_succeeded_post_hook(relation=this, message=None, load_interval_days=None) %}
+{% macro log_model_run_succeeded_post_hook(relation=this, message=None, max_history_load_days=None) %}
     {% set ids = edna_dbt_lib.bq_ids_for_relation(relation) %}
 
     {% set window_start = edna_dbt_lib.get_last_successful_run_window_end(ids['log_table_id'], ids['table_id']) %}
-    {% set window_end = edna_dbt_lib.apply_load_interval_limit(load_interval_days, window_start, run_started_at) %}
+    {% set window_end = edna_dbt_lib.apply_history_load_limit(max_history_load_days, window_start, run_started_at) %}
 
     {{ edna_dbt_lib.log_model_event(
         ids['log_table_id'],
@@ -172,10 +172,10 @@
     }}
 {% endmacro %}
 
-{# Apply load interval limit to window_end if configured #}
-{% macro apply_load_interval_limit(load_interval_days, window_start, window_end=run_started_at) %}
-    {% if load_interval_days %}
-        {% set load_days = load_interval_days | int %}
+{# Apply history load limit to window_end if configured #}
+{% macro apply_history_load_limit(max_history_load_days, window_start, window_end=run_started_at) %}
+    {% if max_history_load_days %}
+        {% set load_days = max_history_load_days | int %}
         {% if load_days > 0 and window_start %}
             {% set max_load_end = modules.datetime.datetime.strptime(window_start, '%Y-%m-%d %H:%M:%S.%f UTC') + modules.datetime.timedelta(days=load_days) %}
             {% if window_end is string %}
