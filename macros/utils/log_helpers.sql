@@ -105,13 +105,22 @@
         qualify row_number() over (order by runWindowEnd desc) = 1
     {%- endset -%}
     {%- set ts = dbt_utils.get_single_value(q) -%}
-    {% if ts is none and is_dev_ci %}
+    {% if ts %}
+        {% if ts is string %}
+            {% set ts_str = ts %}
+        {% else %}
+            {% set ts_str = ts.strftime('%Y-%m-%d %H:%M:%S.%f UTC') %}
+        {% endif %}
+    {% else %}
+        {% set ts_str = none %}
+    {% endif %}
+    {% if ts_str is none and is_dev_ci %}
         {% set dt = modules.datetime.datetime.utcnow() - modules.datetime.timedelta(hours=24) %}
         {{ return(dt.strftime('%Y-%m-%d %H:%M:%S.%f UTC')) }}
-    {% elif ts is none and source_table_id is not none %}
+    {% elif ts_str is none and source_table_id is not none %}
         {{ return(edna_dbt_lib.get_earliest_partition_timestamp(project_id, source_dataset_id, source_table_id)) }}
     {% else %}
-        {{ return(ts or default) }}
+        {{ return(ts_str or default) }}
     {% endif %}
 {% endmacro %}
 
