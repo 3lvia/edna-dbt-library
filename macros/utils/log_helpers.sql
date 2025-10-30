@@ -109,7 +109,7 @@
         {% set dt = modules.datetime.datetime.utcnow() - modules.datetime.timedelta(hours=24) %}
         {{ return(dt.strftime('%Y-%m-%d %H:%M:%S.%f UTC')) }}
     {% elif ts is none and source_table_id is not none %}
-        {{ return(get_earliest_partition_timestamp(project_id, source_dataset_id, source_table_id)) }}
+        {{ return(edna_dbt_lib.get_earliest_partition_timestamp(project_id, source_dataset_id, source_table_id)) }}
     {% else %}
         {{ return(ts or default) }}
     {% endif %}
