@@ -90,6 +90,10 @@ Generates alias names for models, optionally incorporating versioning informatio
 
 A BigQuery-specific materialization for incremental loads that includes logging of model run events. Supports partitioning and clustering configurations. Can be configured with `max_history_load_days` to limit the maximum amount of historical data loaded from the last successful run.
 
+#### `incremental_partition_merge`
+
+A BigQuery-specific materialization for incremental loads using MERGE operations with partition pruning. Optimized for partitioned tables with DAY granularity. Supports unique key matching, event-time based updates, and column filtering through `merge_update_columns` and `merge_exclude_columns` configurations. Automatically prunes partitions to avoid scanning the entire table, satisfying BigQuery's `require_partition_filter` requirement. Supports standard dbt pre and post hooks.
+
 ### Product Registration
 
 #### `validate_dataproduct()`
@@ -236,7 +240,7 @@ Returns SQL values representing the current cloud environment.
 
 ##### `apply_history_load_limit(max_history_load_days, window_start, window_end=run_started_at)`
 
-Applies a max history load limit to the window_end timestamp. If max_history_load_days is provided and greater than 0, and window_start is available, the window_end will be capped at window_start + max_history_load_days to prevent excessive data loading.
+Applies a max history load limit to the window_end timestamp. If max_history_load_days is provided and greater than 0, and window_start is available, the window_end will be capped at window_start + max_history_load_days to prevent excessive data loading. In dev/ci environments, the limit is automatically set to 1 day regardless of the configured value.
 
 ##### `get_earliest_partition_timestamp(project_id, dataset_id, table_name)`
 
@@ -249,6 +253,10 @@ Pre-hook macro to log the start of a model run.
 ##### `log_model_run_succeeded_post_hook(relation=this, message=None, max_history_load_days=None)`
 
 Post-hook macro to log the successful completion of a model run.
+
+##### `get_partitions_literal_for_merge(tmp_relation, partition_field)`
+
+Generate a comma-separated list of quoted DATE literals representing the distinct partitions affected by rows in a temporary relation. Used for BigQuery MERGE operations to satisfy require_partition_filter requirements and avoid scanning entire partitioned tables.
 
 #### Quote Replace
 
