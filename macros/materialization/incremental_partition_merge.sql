@@ -9,7 +9,7 @@
     {% set full_refresh_mode = should_full_refresh() %}
 
     {% set grant_config = config.get('grants') %}
-    {% set cluster_by   = config.get('cluster_by') %}
+    {% set cluster_config   = config.get('cluster_by') %}
 
     {# ----------------------------------------------------------------------------------
         1. Read and validate configs
@@ -26,9 +26,9 @@
         ) %}
     {% endif %}
 
-    {% set partition_by    = adapter.parse_partition_by(raw_partition_by) %}
-    {% set partition_field = partition_by.field %}
-    {% set partition_grain = partition_by.granularity %}
+    {% set partition_config    = adapter.parse_partition_by(raw_partition_by) %}
+    {% set partition_field = partition_config.field %}
+    {% set partition_grain = partition_config.granularity %}
 
     {% if partition_grain | lower != 'day' %}
         {% do exceptions.raise_compiler_error(
@@ -67,13 +67,18 @@
     {# ----------------------------------------------------------------------------------
         2. Create temp relation (the batch for this run)
         Mirrors dbt incremental/merge flow: build an intermediate relation that we'll MERGE from.
+        We apply the same partitioning and clustering as the target table to optimize the MERGE
+        operation by ensuring both tables have compatible physical layouts.
     ---------------------------------------------------------------------------------- #}
 
     {% set tmp_relation = make_temp_relation(this) %}
     {% set model_sql = sql %}
 
-    {%- call statement('main') -%}
-        create or replace table {{ tmp_relation }} as
+    {%- call statement('create_tmp') -%}
+        create or replace table {{ tmp_relation }}
+        {{ partition_by(partition_config) }}
+        {{ cluster_by(cluster_config) }}
+        as
         {{ model_sql }}
     {%- endcall -%}
 
@@ -209,18 +214,18 @@
 
     {% if partitions_literal | length > 0 %}
 
-        {# First run / full refresh / replacing a view #}
+                {# First run / full refresh / replacing a view #}
         {% if (existing_relation is none) or (existing_relation.is_view) or full_refresh_mode %}
 
             {# Drop non-replaceable relation if needed, consistent with dbt patterns #}
             {% if existing_relation is not none and existing_relation.is_view %}
                 {{ adapter.drop_relation(existing_relation) }}
             {% elif full_refresh_mode and (existing_relation is not none)
-                    and (not adapter.is_replaceable(existing_relation, partition_by, cluster_by)) %}
+                    and (not adapter.is_replaceable(existing_relation, partition_config, cluster_config)) %}
                 {{ adapter.drop_relation(existing_relation) }}
             {% endif %}
 
-            {%- call statement('full_refresh_create_target') -%}
+            {%- call statement('main') -%}
                 create or replace table {{ target_relation }} as
                 select *
                 from {{ tmp_relation }}
@@ -236,7 +241,7 @@
                 2) Match rows by unique_key (dbt standard).
             #}
 
-            {%- call statement('partition_pruned_merge') -%}
+            {%- call statement('main') -%}
                 merge into {{ target_relation }} as T
                 using {{ tmp_relation }} as S
                 on
