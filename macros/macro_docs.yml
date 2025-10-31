@@ -53,6 +53,10 @@ macros:
       partitioned datasets to satisfy BigQuery's `require_partition_filter` requirement
       and avoid full table scans.
 
+      The temporary table created during incremental loads uses the same partitioning
+      and clustering configuration as the target table to optimize MERGE performance
+      by ensuring compatible physical data layouts between source and target.
+
       **Required config options:**
       - `partition_by` *(dict|string)* - Must specify DAY granularity partitioning.
       - `unique_key` *(string|list)* - Column(s) that uniquely identify rows for MERGE matching.

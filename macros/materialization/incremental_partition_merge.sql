@@ -67,13 +67,18 @@
     {# ----------------------------------------------------------------------------------
         2. Create temp relation (the batch for this run)
         Mirrors dbt incremental/merge flow: build an intermediate relation that we'll MERGE from.
+        We apply the same partitioning and clustering as the target table to optimize the MERGE
+        operation by ensuring both tables have compatible physical layouts.
     ---------------------------------------------------------------------------------- #}
 
     {% set tmp_relation = make_temp_relation(this) %}
     {% set model_sql = sql %}
 
     {%- call statement('main') -%}
-        create or replace table {{ tmp_relation }} as
+        create or replace table {{ tmp_relation }}
+        {{ partition_by(partition_by) }}
+        {{ cluster_by(cluster_by) }}
+        as
         {{ model_sql }}
     {%- endcall -%}
 
