@@ -74,11 +74,11 @@
 {% endmacro %}
 
 {# Latest successful run's window end time (stored as runWindowEnd for that run in the log table). #}
-{% macro get_last_successful_run_window_end(log_table_id, table_id, default='0001-01-01 00:00:00 UTC') %}
+{% macro get_last_successful_run_window_end(log_table_id, table_id, default='0001-01-01 00:00:00.000000 UTC') %}
     {% set ctx = (env_var('DBT_CLOUD_INVOCATION_CONTEXT', '') or '') | lower %}
     {% set is_dev_ci = ctx in ['dev', 'ci'] %}
-    {% set source_dataset_id = config.get('source_dataset_id', none) %}
-    {% set source_table_id = config.get('source_table_id', none) %}
+    {% set source_dataset = config.get('source_dataset', none) %}
+    {% set source_table = config.get('source_table', none) %}
 
     {% set parts = table_id.split('.') %}
     {% if parts | length != 3 %}
@@ -114,11 +114,29 @@
     {% else %}
         {% set ts_str = none %}
     {% endif %}
+
+    {# For dev/ci, if no log found for actual_dataset, also check the dev/ci table #}
     {% if ts_str is none and is_dev_ci %}
-        {% set dt = modules.datetime.datetime.utcnow() - modules.datetime.timedelta(hours=24) %}
-        {{ return(dt.strftime('%Y-%m-%d %H:%M:%S.%f UTC')) }}
-    {% elif ts_str is none and source_table_id is not none %}
-        {{ return(edna_dbt_lib.get_earliest_partition_timestamp(project_id, source_dataset_id, source_table_id)) }}
+        {%- set q_dev_ci -%}
+            select runWindowEnd
+            from `{{ log_table_id }}`
+            where bigQueryTableId = '{{ table_id }}'
+                and eventType = 'model_run_succeeded'
+                and runWindowEnd is not null
+            qualify row_number() over (order by runWindowEnd desc) = 1
+        {%- endset -%}
+        {%- set ts_dev_ci = dbt_utils.get_single_value(q_dev_ci) -%}
+        {% if ts_dev_ci %}
+            {% if ts_dev_ci is string %}
+                {% set ts_str = ts_dev_ci %}
+            {% else %}
+                {% set ts_str = ts_dev_ci.strftime('%Y-%m-%d %H:%M:%S.%f UTC') %}
+            {% endif %}
+        {% endif %}
+    {% endif %}
+
+    {% if ts_str is none and source_table is not none %}
+        {{ return(edna_dbt_lib.get_earliest_partition_timestamp(project_id, source_dataset, source_table) or default) }}
     {% else %}
         {{ return(ts_str or default) }}
     {% endif %}
@@ -184,7 +202,17 @@
 {# Apply history load limit to window_end if configured #}
 {% macro apply_history_load_limit(max_history_load_days, window_start, window_end=run_started_at) %}
     {% if max_history_load_days %}
+        {% set ctx = (env_var('DBT_CLOUD_INVOCATION_CONTEXT', '') or '') | lower %}
+        {% set is_dev_ci = ctx in ['dev', 'ci'] %}
         {% set load_days = max_history_load_days | int %}
+        {% if is_dev_ci %}
+            {% set dev_ci_config = config.get('max_history_load_days_dev_ci', none) %}
+            {% if dev_ci_config %}
+                {% set load_days = dev_ci_config | int %}
+            {% else %}
+                {% set load_days = 1 %}
+            {% endif %}
+        {% endif %}
         {% if load_days > 0 and window_start %}
             {% set max_load_end = modules.datetime.datetime.strptime(window_start, '%Y-%m-%d %H:%M:%S.%f UTC') + modules.datetime.timedelta(days=load_days) %}
             {% if window_end is string %}
