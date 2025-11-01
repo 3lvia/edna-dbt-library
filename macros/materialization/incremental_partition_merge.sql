@@ -266,11 +266,15 @@
     {% else %}
 
         {# No rows in tmp_relation, so there are no partitions to touch.
-            Skip merge/create. #}
+            Skip merge/create, but provide a dummy main statement for dbt. #}
         {% do log(
             "incremental_partition_merge: no rows to merge for " ~ target_relation ~ ", skipping merge",
             info=True
         ) %}
+
+        {%- call statement('main') -%}
+            select 1 as no_rows_to_merge limit 0
+        {%- endcall -%}
 
     {% endif %}
 
