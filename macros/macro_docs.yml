@@ -57,6 +57,10 @@ macros:
       and clustering configuration as the target table to optimize MERGE performance
       by ensuring compatible physical data layouts between source and target.
 
+      **Safe handling of empty datasets:**
+      - First run with no data: Creates an empty target table with proper partitioning/clustering
+      - Incremental run with no data: Inserts 0 rows (preserves existing data, satisfies dbt requirements)
+
       **Required config options:**
       - `partition_by` *(dict|string)* - Must specify DAY granularity partitioning.
       - `unique_key` *(string|list)* - Column(s) that uniquely identify rows for MERGE matching.

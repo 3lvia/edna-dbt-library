@@ -265,16 +265,31 @@
 
     {% else %}
 
-        {# No rows in tmp_relation, so there are no partitions to touch.
-            Skip merge/create, but provide a dummy main statement for dbt. #}
-        {% do log(
-            "incremental_partition_merge: no rows to merge for " ~ target_relation ~ ", skipping merge",
-            info=True
-        ) %}
+        {# No rows in tmp_relation, so there are no partitions to touch. #}
+        {% if existing_relation is none %}
+            {# First run with no data: create empty target table #}
+            {% do log(
+                "incremental_partition_merge: no rows to merge for " ~ target_relation ~ ", creating empty table",
+                info=True
+            ) %}
 
-        {%- call statement('main') -%}
-            select 1 as no_rows_to_merge limit 0
-        {%- endcall -%}
+            {%- call statement('main') -%}
+                create or replace table {{ target_relation }} as
+                select *
+                from {{ tmp_relation }}
+            {%- endcall -%}
+        {% else %}
+            {# Incremental run with no data: insert 0 rows to satisfy dbt's main statement requirement #}
+            {% do log(
+                "incremental_partition_merge: no rows to merge for " ~ target_relation ~ ", inserting 0 rows",
+                info=True
+            ) %}
+
+            {%- call statement('main') -%}
+                insert into {{ target_relation }}
+                select * from {{ tmp_relation }}
+            {%- endcall -%}
+        {% endif %}
 
     {% endif %}
 
