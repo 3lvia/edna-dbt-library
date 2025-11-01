@@ -226,7 +226,10 @@
             {% endif %}
 
             {%- call statement('main') -%}
-                create or replace table {{ target_relation }} as
+                create or replace table {{ target_relation }} 
+                {{ partition_by(partition_config) }}
+                {{ cluster_by(cluster_config) }}
+                as
                 select *
                 from {{ tmp_relation }}
             {%- endcall -%}
@@ -275,6 +278,8 @@
 
             {%- call statement('main') -%}
                 create or replace table {{ target_relation }} as
+                {{ partition_by(partition_config) }}
+                {{ cluster_by(cluster_config) }}
                 select *
                 from {{ tmp_relation }}
             {%- endcall -%}
