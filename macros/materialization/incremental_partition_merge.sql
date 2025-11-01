@@ -277,9 +277,10 @@
             ) %}
 
             {%- call statement('main') -%}
-                create or replace table {{ target_relation }} as
+                create or replace table {{ target_relation }}
                 {{ partition_by(partition_config) }}
                 {{ cluster_by(cluster_config) }}
+                as
                 select *
                 from {{ tmp_relation }}
             {%- endcall -%}
