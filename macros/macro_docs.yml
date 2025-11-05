@@ -72,6 +72,7 @@ macros:
       - `cluster_by` *(list|string)* - Standard BigQuery clustering config.
       - `source_dataset` *(string, optional)* - BigQuery dataset name for the source table used to determine earliest partition timestamp when no successful runs are found.
       - `source_table` *(string, optional)* - BigQuery table name for the source table used to determine earliest partition timestamp when no successful runs are found.
+      - `table_window_end` *(string, optional)* - Maximum timestamp limit for the run window. If the calculated window end exceeds this limit, it will be capped at this value.
       - `grants` *(object)* - dbt grants configuration.
       - `pre_hook` *(list)* - SQL statements to run before the materialization.
       - `post_hook` *(list)* - SQL statements to run after the materialization.
@@ -425,7 +426,7 @@ macros:
         description: The table_id to find the last successful run for.
         type: string
       - name: default
-        description: Default timestamp to return if no successful run is found. Defaults to '0001-01-01 00:00:00 UTC'.
+        description: Default timestamp to return if no successful run is found. Defaults to '1900-01-01 00:00:00.000000 UTC'.
         type: string
 
   - name: cloud_env_sql_values
@@ -452,6 +453,26 @@ macros:
       - name: window_end
         description: The proposed end timestamp of the window.
         type: string
+      - name: max_history_load_days_dev_ci
+        description: Optional override for max_history_load_days in dev/ci environments. If provided, this value is used instead of the default 1 day limit.
+        type: integer
+
+  - name: apply_history_load_limit_adjusted
+    description: >
+      Apply history load limit to window_end and adjust for table limits. First applies
+      the history load limit using apply_history_load_limit, then checks if the result
+      exceeds the table_window_end config limit. If it does, returns the table limit
+      instead. This ensures the run window never exceeds configured table boundaries.
+    arguments:
+      - name: max_history_load_days
+        description: Optional number of days to limit historical data loading.
+        type: integer
+      - name: window_start
+        description: The start timestamp of the window.
+        type: string
+      - name: max_history_load_days_dev_ci
+        description: Optional override for max_history_load_days in dev/ci environments.
+        type: integer
 
   - name: get_earliest_partition_timestamp
     description: >
@@ -483,6 +504,15 @@ macros:
       - name: max_history_load_days
         description: Optional maximum number of days of historical data to load from the last successful run. If provided, limits the window end to prevent excessive data loading. In dev/ci environments, this can be overridden by max_history_load_days_dev_ci config.
         type: integer
+      - name: run_window_start
+        description: Optional explicit run window start timestamp. If not provided, it will be calculated from the last successful run.
+        type: string
+      - name: run_window_end
+        description: Optional explicit run window end timestamp. If not provided, it will be calculated based on history load limits.
+        type: string
+      - name: max_history_load_days_dev_ci
+        description: Optional override for max_history_load_days in dev/ci environments. If provided, this value is used instead of the default 1 day limit.
+        type: integer
 
   - name: log_model_run_succeeded_post_hook
     description: >
@@ -496,6 +526,15 @@ macros:
         type: string
       - name: max_history_load_days
         description: Optional maximum number of days of historical data to load from the last successful run. If provided, limits the window end to prevent excessive data loading. In dev/ci environments, this can be overridden by max_history_load_days_dev_ci config.
+        type: integer
+      - name: run_window_start
+        description: Optional explicit run window start timestamp. If not provided, it will be calculated from the last successful run.
+        type: string
+      - name: run_window_end
+        description: Optional explicit run window end timestamp. If not provided, it will be calculated based on history load limits.
+        type: string
+      - name: max_history_load_days_dev_ci
+        description: Optional override for max_history_load_days in dev/ci environments. If provided, this value is used instead of the default 1 day limit.
         type: integer
 
   - name: get_partitions_literal_for_merge

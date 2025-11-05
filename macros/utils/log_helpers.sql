@@ -74,7 +74,7 @@
 {% endmacro %}
 
 {# Latest successful run's window end time (stored as runWindowEnd for that run in the log table). #}
-{% macro get_last_successful_run_window_end(log_table_id, table_id, default='0001-01-01 00:00:00.000000 UTC') %}
+{% macro get_last_successful_run_window_end(log_table_id, table_id, default='1900-01-01 00:00:00.000000 UTC') %}
     {% set ctx = (env_var('DBT_CLOUD_INVOCATION_CONTEXT', '') or '') | lower %}
     {% set is_dev_ci = ctx in ['dev', 'ci'] %}
     {% set source_dataset = config.get('source_dataset', none) %}
@@ -162,19 +162,24 @@
 {% endmacro %}
 
 {# Wrapper macros for logging model events in pre/post hooks #}
-{% macro log_model_run_started_pre_hook(relation=this, message=None, max_history_load_days=None) %}
+{% macro log_model_run_started_pre_hook(relation=this, message=None, max_history_load_days=None, run_window_start=None, run_window_end=None, max_history_load_days_dev_ci=None) %}
     {% set started_ts = modules.datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f UTC') %}
     {% set ids = edna_dbt_lib.bq_ids_for_relation(relation) %}
 
-    {% set window_start = edna_dbt_lib.get_last_successful_run_window_end(ids['log_table_id'], ids['table_id']) %}
-    {% set window_end = edna_dbt_lib.apply_history_load_limit(max_history_load_days, window_start, run_started_at) %}
+    {% if not run_window_start %}
+        {% set run_window_start = edna_dbt_lib.get_last_successful_run_window_end(ids['log_table_id'], ids['table_id']) %}
+    {% endif %}
+
+    {% if not run_window_end %}
+        {% set run_window_end = edna_dbt_lib.apply_history_load_limit_adjusted(max_history_load_days, run_window_start, max_history_load_days_dev_ci=max_history_load_days_dev_ci) %}
+    {% endif %}
 
     {{ edna_dbt_lib.log_model_event(
         ids['log_table_id'],
         relation,
         'model_run_started',
-        window_start,
-        window_end,
+        run_window_start,
+        run_window_end,
         ids=ids,
         event_ts=started_ts,
         message=message
@@ -182,33 +187,37 @@
     }}
 {% endmacro %}
 
-{% macro log_model_run_succeeded_post_hook(relation=this, message=None, max_history_load_days=None) %}
-    {% set ids = edna_dbt_lib.bq_ids_for_relation(relation) %}
+{% macro log_model_run_succeeded_post_hook(relation=this, message=None, max_history_load_days=None, run_window_start=None, run_window_end=None, max_history_load_days_dev_ci=None) %}
+    {% set ids = bq_ids_for_relation(relation) %}
 
-    {% set window_start = edna_dbt_lib.get_last_successful_run_window_end(ids['log_table_id'], ids['table_id']) %}
-    {% set window_end = edna_dbt_lib.apply_history_load_limit(max_history_load_days, window_start, run_started_at) %}
+    {% if not run_window_start %}
+        {% set run_window_start = edna_dbt_lib.get_last_successful_run_window_end(ids['log_table_id'], ids['table_id']) %}
+    {% endif %}
 
-    {{ edna_dbt_lib.log_model_event(
+    {% if not run_window_end %}
+        {% set run_window_end = edna_dbt_lib.apply_history_load_limit_adjusted(max_history_load_days, run_window_start, max_history_load_days_dev_ci=max_history_load_days_dev_ci) %}
+    {% endif %}
+
+    {{ log_model_event(
         ids['log_table_id'],
         relation,
         'model_run_succeeded',
-        window_start,
-        window_end,
+        run_window_start,
+        run_window_end,
         ids=ids,
         message=message)
     }}
 {% endmacro %}
 
 {# Apply history load limit to window_end if configured #}
-{% macro apply_history_load_limit(max_history_load_days, window_start, window_end=run_started_at) %}
-    {% if max_history_load_days %}
+{% macro apply_history_load_limit(max_history_load_days, window_start, window_end=run_started_at, max_history_load_days_dev_ci=None) %}
+    {% if max_history_load_days or max_history_load_days_dev_ci %}
         {% set ctx = (env_var('DBT_CLOUD_INVOCATION_CONTEXT', '') or '') | lower %}
         {% set is_dev_ci = ctx in ['dev', 'ci'] %}
-        {% set load_days = max_history_load_days | int %}
+        {% set load_days = max_history_load_days | int  %}
         {% if is_dev_ci %}
-            {% set dev_ci_config = config.get('max_history_load_days_dev_ci', none) %}
-            {% if dev_ci_config %}
-                {% set load_days = dev_ci_config | int %}
+            {% if max_history_load_days_dev_ci %}
+                {% set load_days = max_history_load_days_dev_ci | int %}
             {% else %}
                 {% set load_days = 1 %}
             {% endif %}
@@ -226,6 +235,22 @@
         {% endif %}
     {% endif %}
     {{ return(window_end) }}
+{% endmacro %}
+
+{# Apply history load limit to window_end and adjusts for table limits #}
+{% macro apply_history_load_limit_adjusted(max_history_load_days, window_start, max_history_load_days_dev_ci=None) %}
+    {% set calculated_run_window_end = edna_dbt_lib.apply_history_load_limit(max_history_load_days, window_start, max_history_load_days_dev_ci=max_history_load_days_dev_ci) %}
+
+    {% if config.get('table_window_end') %}
+        {% if calculated_run_window_end | string < config.get('table_window_end') %}
+            {% set run_window_end = calculated_run_window_end %}
+        {% else %}
+            {% set run_window_end = config.get('table_window_end') %}
+        {% endif %}
+    {% else %}
+        {% set run_window_end = edna_dbt_lib.apply_history_load_limit(max_history_load_days, run_window_start, run_started_at) %}
+    {% endif %}
+    {{ return(run_window_end) }}
 {% endmacro %}
 
 {# Get the earliest partition timestamp from INFORMATION_SCHEMA.PARTITIONS for a given table #}
