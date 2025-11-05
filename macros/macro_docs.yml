@@ -474,6 +474,28 @@ macros:
         description: Optional override for max_history_load_days in dev/ci environments.
         type: integer
 
+  - name: get_lowest_string_timestamp
+    description: >
+      Find the lowest (earliest) timestamp from a list of string timestamps using BigQuery SQL evaluation.
+      Filters out empty/null values and uses BigQuery's MIN() function to find the earliest timestamp.
+      Returns the earliest timestamp as a formatted string, or None if the list
+      is empty or contains no valid timestamps.
+    arguments:
+      - name: timestamps
+        description: List of timestamp strings in 'YYYY-MM-DD HH:MM:SS.ffffff UTC' format.
+        type: list
+
+  - name: get_highest_string_timestamp
+    description: >
+      Find the highest (latest) timestamp from a list of string timestamps using BigQuery SQL evaluation.
+      Filters out empty/null values and uses BigQuery's MAX() function to find the latest timestamp.
+      Returns the latest timestamp as a formatted string, or None if the list
+      is empty or contains no valid timestamps.
+    arguments:
+      - name: timestamps
+        description: List of timestamp strings in 'YYYY-MM-DD HH:MM:SS.ffffff UTC' format.
+        type: list
+
   - name: get_earliest_partition_timestamp
     description: >
       Get the earliest partition timestamp from INFORMATION_SCHEMA.PARTITIONS for a given BigQuery table.

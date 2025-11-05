@@ -242,15 +242,63 @@
     {% set calculated_run_window_end = edna_dbt_lib.apply_history_load_limit(max_history_load_days, window_start, max_history_load_days_dev_ci=max_history_load_days_dev_ci) %}
 
     {% if config.get('table_window_end') %}
-        {% if calculated_run_window_end | string < config.get('table_window_end') %}
-            {% set run_window_end = calculated_run_window_end %}
-        {% else %}
-            {% set run_window_end = config.get('table_window_end') %}
-        {% endif %}
+        {% set run_window_end = edna_dbt_lib.get_lowest_string_timestamp([calculated_run_window_end, config.get('table_window_end')]) %}
     {% else %}
-        {% set run_window_end = edna_dbt_lib.apply_history_load_limit(max_history_load_days, window_start, run_started_at) %}
+        {% set run_window_end = edna_dbt_lib.apply_history_load_limit(max_history_load_days, window_start, run_started_at, max_history_load_days_dev_ci=max_history_load_days_dev_ci) %}
     {% endif %}
     {{ return(run_window_end) }}
+{% endmacro %}
+
+{# Get the lowest timestamp from a list of string timestamps using BigQuery evaluation. #}
+{% macro get_lowest_string_timestamp(timestamps) %}
+    {% set cleaned = [] %}
+    {% for ts in timestamps %}
+        {% if ts and ts | trim != '' and ts != 'None' %}
+            {% do cleaned.append(ts) %}
+        {% endif %}
+    {% endfor %}
+    {% if cleaned | length == 0 %}
+        {{ return(none) }}
+    {% endif %}
+
+    {% set selects = [] %}
+    {% for ts in cleaned %}
+        {% do selects.append("select TIMESTAMP('" ~ ts ~ "') as ts") %}
+    {% endfor %}
+    {% set q %}
+        select format_timestamp('%Y-%m-%d %H:%M:%E6S UTC', min(ts)) as v
+        from (
+            {{ selects | join('\n            union all\n            ') }}
+        )
+    {% endset %}
+    {% set result = dbt_utils.get_single_value(q) %}
+    {{ return(result) }}
+{% endmacro %}
+
+{# Get the highest timestamp from a list of string timestamps using BigQuery evaluation. #}
+{% macro get_highest_string_timestamp(timestamps) %}
+    {% set cleaned = [] %}
+    {% for ts in timestamps %}
+        {% if ts and ts | trim != '' and ts != 'None' %}
+            {% do cleaned.append(ts) %}
+        {% endif %}
+    {% endfor %}
+    {% if cleaned | length == 0 %}
+        {{ return(none) }}
+    {% endif %}
+
+    {% set selects = [] %}
+    {% for ts in cleaned %}
+        {% do selects.append("select TIMESTAMP('" ~ ts ~ "') as ts") %}
+    {% endfor %}
+    {% set q %}
+        select format_timestamp('%Y-%m-%d %H:%M:%E6S UTC', max(ts)) as v
+        from (
+            {{ selects | join('\n            union all\n            ') }}
+        )
+    {% endset %}
+    {% set result = dbt_utils.get_single_value(q) %}
+    {{ return(result) }}
 {% endmacro %}
 
 {# Get the earliest partition timestamp from INFORMATION_SCHEMA.PARTITIONS for a given table #}
