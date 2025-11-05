@@ -188,7 +188,7 @@
 {% endmacro %}
 
 {% macro log_model_run_succeeded_post_hook(relation=this, message=None, max_history_load_days=None, run_window_start=None, run_window_end=None, max_history_load_days_dev_ci=None) %}
-    {% set ids = bq_ids_for_relation(relation) %}
+    {% set ids = edna_dbt_lib.bq_ids_for_relation(relation) %}
 
     {% if not run_window_start %}
         {% set run_window_start = edna_dbt_lib.get_last_successful_run_window_end(ids['log_table_id'], ids['table_id']) %}
@@ -198,7 +198,7 @@
         {% set run_window_end = edna_dbt_lib.apply_history_load_limit_adjusted(max_history_load_days, run_window_start, max_history_load_days_dev_ci=max_history_load_days_dev_ci) %}
     {% endif %}
 
-    {{ log_model_event(
+    {{ edna_dbt_lib.log_model_event(
         ids['log_table_id'],
         relation,
         'model_run_succeeded',
@@ -248,7 +248,7 @@
             {% set run_window_end = config.get('table_window_end') %}
         {% endif %}
     {% else %}
-        {% set run_window_end = edna_dbt_lib.apply_history_load_limit(max_history_load_days, run_window_start, run_started_at) %}
+        {% set run_window_end = edna_dbt_lib.apply_history_load_limit(max_history_load_days, window_start, run_started_at) %}
     {% endif %}
     {{ return(run_window_end) }}
 {% endmacro %}
