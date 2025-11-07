@@ -15,6 +15,8 @@
     {% endif %}
     {% set run_window_col_ts = "SAFE_CAST(" ~ run_window_column ~ " AS TIMESTAMP)" %}
     {% set max_history_load_days = config.get('max_history_load_days', none) %}
+    {% set max_history_load_days_dev_ci = config.get('max_history_load_days_dev_ci', none) %}
+
 
 
     {# BigQuery/core-aligned knobs #}
@@ -40,7 +42,7 @@
     {% set prev_run_window_end = edna_dbt_lib.get_last_successful_run_window_end(log_table_id, target_table_id) %}
 
     {# === Establish the run window === #}
-    {% set current_run_window_end = edna_dbt_lib.apply_history_load_limit(max_history_load_days, prev_run_window_end, run_started_at) %}
+    {% set current_run_window_end = edna_dbt_lib.apply_history_load_limit(max_history_load_days, prev_run_window_end, run_started_at, max_history_load_days_dev_ci) %}
 
     {# Log the start of THIS run #}
     {%- call statement('log_model_run_started') -%}
