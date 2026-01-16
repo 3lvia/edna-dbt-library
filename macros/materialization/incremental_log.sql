@@ -15,8 +15,8 @@
         {% do exceptions.raise_compiler_error("incremental_log: `run_window_column` is required and must appear in your SELECT.") %}
     {% endif %}
     {% set run_window_col_ts = "SAFE_CAST(" ~ run_window_column ~ " AS TIMESTAMP)" %}
-    {% set max_history_load_days = config.get('max_history_load_days', meta_config.get('max_history_load_days')) %}
-    {% set max_history_load_days_dev_ci = config.get('max_history_load_days_dev_ci', meta_config.get('max_history_load_days_dev_ci')) %}
+    {% set max_history_load_days = config.get('max_history_load_days', meta_config.get('max_history_load_days', none)) %}
+    {% set max_history_load_days_dev_ci = config.get('max_history_load_days_dev_ci', meta_config.get('max_history_load_days_dev_ci', none)) %}
 
 
 
