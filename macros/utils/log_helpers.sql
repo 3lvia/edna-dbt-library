@@ -243,7 +243,7 @@
     {% set calculated_run_window_end = edna_dbt_lib.apply_history_load_limit(max_history_load_days, window_start, max_history_load_days_dev_ci=max_history_load_days_dev_ci) %}
 
     {% set meta_config = config.get('meta') or {} %}
-    {% set table_window_end = config.get('table_window_end', meta_config.get('table_window_end')) %}
+    {% set table_window_end = config.get('table_window_end', meta_config.get('table_window_end', none)) %}
 
     {% if table_window_end %}
         {% set run_window_end = edna_dbt_lib.get_lowest_string_timestamp([calculated_run_window_end, table_window_end]) %}
