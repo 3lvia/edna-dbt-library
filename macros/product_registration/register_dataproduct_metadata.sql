@@ -1,6 +1,7 @@
 {% macro register_dataproduct_metadata() %}
     {% if execute %}
-        {% set dataprodconfig = config.get('dataproduct') %}
+        {% set meta_config = config.get('meta') or {} %}
+        {% set dataprodconfig = config.get('dataproduct', meta_config.dataproduct) %}
         {% if edna_dbt_lib.is_defined(dataprodconfig) %}
 
             {% set description = edna_dbt_lib.quote_replace(model.description) %}

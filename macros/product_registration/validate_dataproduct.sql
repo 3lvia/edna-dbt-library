@@ -2,7 +2,8 @@
     {% if execute %}
         {% set is_registered = edna_dbt_lib._is_registered_dataproduct(this) %}
 
-        {%- set dataproduct_config = config.get('dataproduct') -%}
+        {%- set meta_config = config.get('meta') or {} -%}
+        {%- set dataproduct_config = config.get('dataproduct', meta_config.dataproduct) -%}
         {%- set is_dataproduct = edna_dbt_lib.is_defined(dataproduct_config) or config.get('datacatalog', False) -%}
 
         {% if is_registered and not is_dataproduct %}

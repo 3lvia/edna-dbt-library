@@ -6,7 +6,8 @@
     {% set target_table_id    = bq_ids['table_id'] %}
 
     {# === Required config === #}
-    {% set run_window_column = config.get('run_window_column', 'insertTime') %}
+    {% set meta_config = config.get('meta') or {} %}
+    {% set run_window_column = config.get('run_window_column', meta_config.run_window_column or 'insertTime') %}
     {% if not log_table_id %}
         {% do exceptions.raise_compiler_error("incremental_log: `log_table_id` (project.dataset.table) is required.") %}
     {% endif %}
@@ -14,8 +15,8 @@
         {% do exceptions.raise_compiler_error("incremental_log: `run_window_column` is required and must appear in your SELECT.") %}
     {% endif %}
     {% set run_window_col_ts = "SAFE_CAST(" ~ run_window_column ~ " AS TIMESTAMP)" %}
-    {% set max_history_load_days = config.get('max_history_load_days', none) %}
-    {% set max_history_load_days_dev_ci = config.get('max_history_load_days_dev_ci', none) %}
+    {% set max_history_load_days = config.get('max_history_load_days', meta_config.max_history_load_days) %}
+    {% set max_history_load_days_dev_ci = config.get('max_history_load_days_dev_ci', meta_config.max_history_load_days_dev_ci) %}
 
 
 
