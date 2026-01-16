@@ -78,8 +78,8 @@
     {% set ctx = (env_var('DBT_CLOUD_INVOCATION_CONTEXT', '') or '') | lower %}
     {% set is_dev_ci = ctx in ['dev', 'ci'] %}
     {% set meta_config = config.get('meta') or {} %}
-    {% set source_dataset = config.get('source_dataset', meta_config.source_dataset) %}
-    {% set source_table = config.get('source_table', meta_config.source_table) %}
+    {% set source_dataset = config.get('source_dataset', meta_config.get('source_dataset')) %}
+    {% set source_table = config.get('source_table', meta_config.get('source_table')) %}
 
     {% set parts = table_id.split('.') %}
     {% if parts | length != 3 %}
@@ -243,7 +243,7 @@
     {% set calculated_run_window_end = edna_dbt_lib.apply_history_load_limit(max_history_load_days, window_start, max_history_load_days_dev_ci=max_history_load_days_dev_ci) %}
 
     {% set meta_config = config.get('meta') or {} %}
-    {% set table_window_end = config.get('table_window_end', meta_config.table_window_end) %}
+    {% set table_window_end = config.get('table_window_end', meta_config.get('table_window_end')) %}
 
     {% if table_window_end %}
         {% set run_window_end = edna_dbt_lib.get_lowest_string_timestamp([calculated_run_window_end, table_window_end]) %}

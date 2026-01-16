@@ -1,6 +1,6 @@
 {% macro generate_alias_name(custom_alias_name=none, node=none) -%}
     {%- set meta_config = node.config.get('meta') or {} -%}
-    {%- set dataprodconfig = node.config.get('dataproduct', meta_config.dataproduct) -%}
+    {%- set dataprodconfig = node.config.get('dataproduct', meta_config.get('dataproduct')) -%}
 
     {%- if edna_dbt_lib.is_defined(dataprodconfig) and edna_dbt_lib.is_defined(dataprodconfig.get('version')) -%}
         {%- set v = (dataprodconfig.get('version') | trim('.0')) -%}
