@@ -77,8 +77,8 @@
 {% macro get_last_successful_run_window_end(log_table_id, table_id, default='1900-01-01 00:00:00.000000 UTC') %}
     {% set ctx = (env_var('DBT_CLOUD_INVOCATION_CONTEXT', '') or '') | lower %}
     {% set is_dev_ci = ctx in ['dev', 'ci'] %}
-    {% set source_dataset = edna_dbt_lib.get_config_or_meta(config, 'source_dataset', none) %}
-    {% set source_table = edna_dbt_lib.get_config_or_meta(config, 'source_table', none) %}
+    {% set source_dataset = edna_dbt_lib.get_config_or_meta(config, 'source_dataset') %}
+    {% set source_table = edna_dbt_lib.get_config_or_meta(config, 'source_table') %}
 
     {% set parts = table_id.split('.') %}
     {% if parts | length != 3 %}
