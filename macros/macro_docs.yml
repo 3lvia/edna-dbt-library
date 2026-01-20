@@ -35,6 +35,7 @@ macros:
       `edna_dbt_lib.bq_ids_for_relation(this)`.
 
       **Config options (set via `config()` in models):**
+      Options can be set either at the top level or under `meta` (via `config.meta_get`).
       - `run_window_column` *(string, default: `insertTime`)* - timestamp column used for incremental windowing.
       - `max_history_load_days` *(string, optional)* - maximum number of days of historical data to load from the last successful run. If the time since the last successful run exceeds this limit, the current run window end will be limited to prevent excessive data loading.
       - `max_history_load_days_dev_ci` *(string, optional)* - override for max_history_load_days in dev/ci environments. If not set, defaults to 1 day in dev/ci.
@@ -66,6 +67,7 @@ macros:
       - `unique_key` *(string|list)* - Column(s) that uniquely identify rows for MERGE matching.
 
       **Optional config options:**
+      Options can be set either at the top level or under `meta` (via `config.meta_get`) where applicable.
       - `event_time` *(string)* - Timestamp column for recency-based updates. Only updates existing rows if the new row has a newer event_time.
       - `merge_update_columns` *(list)* - Whitelist of columns to update during MERGE.
       - `merge_exclude_columns` *(list)* - Blacklist of columns to exclude from updates.
@@ -82,7 +84,8 @@ macros:
     description: >
       Validate that a model configured as a dataproduct meets registration
       expectations: preview where clause syntax, same-dataset placement,
-      column additions/removals and semantic versioning.
+      column additions/removals and semantic versioning. Dataproduct config may
+      be set at the top level or under `meta` (via `config.meta_get`).
     arguments: []
 
   - name: register_dataproduct_metadata
@@ -91,6 +94,8 @@ macros:
       dataplatform table. Captures description, display name, owner, columns,
       labels, size info and version information. 
       Currently not used. Replaced by edna-data-api.DataproductAggregation.
+      Dataproduct config may be set at the top level or under `meta`
+      (via `config.meta_get`).
     arguments: []
 
   - name: is_defined
@@ -100,6 +105,23 @@ macros:
     arguments:
       - name: item
         description: Value to test
+        type: any
+
+  - name: get_config_or_meta
+    description: >
+      Resolve a config value from `meta` first (using `config.meta_get` when
+      available) and fall back to the top-level config. This avoids dbt warnings
+      when custom configs are defined under `meta` while keeping backward
+      compatibility.
+    arguments:
+      - name: config_obj
+        description: The config object to inspect (e.g., `config` or `node.config`).
+        type: object
+      - name: key
+        description: Config key to resolve.
+        type: string
+      - name: default
+        description: Optional default value if not found.
         type: any
 
   - name: create_tmp_relation

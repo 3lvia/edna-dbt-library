@@ -88,27 +88,31 @@ Generates alias names for models, optionally incorporating versioning informatio
 
 #### `incremental_log`
 
-A BigQuery-specific materialization for incremental loads that includes logging of model run events. Supports partitioning and clustering configurations. Can be configured with `max_history_load_days` to limit the maximum amount of historical data loaded from the last successful run.
+A BigQuery-specific materialization for incremental loads that includes logging of model run events. Supports partitioning and clustering configurations. Can be configured with `max_history_load_days` to limit the maximum amount of historical data loaded from the last successful run. Custom config options can be set at the top level or under `meta` (via `config.meta_get`).
 
 #### `incremental_partition_merge`
 
-A BigQuery-specific materialization for incremental loads using MERGE operations with partition pruning. Optimized for partitioned tables with DAY granularity. Supports unique key matching, event-time based updates, and column filtering through `merge_update_columns` and `merge_exclude_columns` configurations. Automatically prunes partitions to avoid scanning the entire table, satisfying BigQuery's `require_partition_filter` requirement. Supports standard dbt pre and post hooks.
+A BigQuery-specific materialization for incremental loads using MERGE operations with partition pruning. Optimized for partitioned tables with DAY granularity. Supports unique key matching, event-time based updates, and column filtering through `merge_update_columns` and `merge_exclude_columns` configurations. Automatically prunes partitions to avoid scanning the entire table, satisfying BigQuery's `require_partition_filter` requirement. Supports standard dbt pre and post hooks. Custom config options can be set at the top level or under `meta` (via `config.meta_get`).
 
 ### Product Registration
 
 #### `validate_dataproduct()`
 
-Validates dataproduct configurations, including preview where clauses, dataset membership, column changes, and semantic versioning.
+Validates dataproduct configurations, including preview where clauses, dataset membership, column changes, and semantic versioning. Dataproduct config can be set at the top level or under `meta` (via `config.meta_get`).
 
 #### `register_dataproduct_metadata()`
 
-Registers or updates dataproduct metadata in the dataplatform, including description, columns, labels, size information, and versioning details.
+Registers or updates dataproduct metadata in the dataplatform, including description, columns, labels, size information, and versioning details. Dataproduct config can be set at the top level or under `meta` (via `config.meta_get`).
 
 #### Helper Macros
 
 ##### `is_defined(item)`
 
 Checks if an item is defined, not null, and not an empty string.
+
+##### `get_config_or_meta(config_obj, key, default=none)`
+
+Resolves a config value from `meta` first (using `config.meta_get` when available) and falls back to top-level config without triggering dbt warnings.
 
 ##### `create_tmp_relation(compiled_sql, target_relation)`
 
