@@ -158,7 +158,7 @@ macros:
       strategy are not provided.
     arguments:
       - name: project_name
-        description: Upstream dbt project name used for cross-project `ref()` in CI/TEST/PROD.
+        description: Upstream dbt project name used for cross-project `ref()` in Development/CI/TEST/PROD.
         type: string
       - name: model_name
         description: Upstream logical dbt model name used for cross-project `ref()` in Development/CI/TEST/PROD. Also used as the default physical source table name in DEV when `table_name` is not provided.

@@ -21,10 +21,16 @@
 {% endmacro %}
 
 {% macro _validate_upstream_relation_source_args(source_name, resolved_table_name, environment) %}
-    {% if source_name is not defined or source_name is none or source_name == '' or resolved_table_name is not defined or resolved_table_name is none or resolved_table_name == '' %}
+    {% if source_name is not defined or source_name is none or source_name == '' %}
         {% do exceptions.raise_compiler_error(
-            "cross_project_ref: source_name is required, and table_name must be provided when "
-            ~ "model_name cannot be used as the physical source table name, when DBT_PROJECT_ENVIRONMENT resolves to '" ~ environment ~ "'."
+            "cross_project_ref: source_name is required when DBT_PROJECT_ENVIRONMENT resolves to '" ~ environment ~ "'."
+        ) %}
+    {% endif %}
+
+    {% if resolved_table_name is not defined or resolved_table_name is none or resolved_table_name == '' %}
+        {% do exceptions.raise_compiler_error(
+            "cross_project_ref: provide model_name or table_name to resolve the physical source table name when "
+            ~ "DBT_PROJECT_ENVIRONMENT resolves to '" ~ environment ~ "'."
         ) %}
     {% endif %}
 {% endmacro %}
@@ -41,6 +47,7 @@
 {% macro cross_project_ref(project_name=none, model_name=none, source_name=none, table_name=none, version=none) %}
     {% set environment = edna_dbt_lib._get_dbt_project_environment() %}
     {% set resolved_table_name = table_name if table_name is defined and table_name is not none and table_name != '' else model_name %}
+    {% set resolved_version = version if version is defined and version is not none and (version | string | trim) != '' else none %}
 
     {# DEV should resolve through explicit sources instead of cross-project refs. #}
     {% if environment == 'DEV' %}
@@ -50,8 +57,8 @@
 
     {% do edna_dbt_lib._validate_upstream_relation_ref_args(project_name, model_name, environment) %}
 
-    {% if version is not none %}
-        {{ return(ref(project_name, model_name, version=version)) }}
+    {% if resolved_version is not none %}
+        {{ return(ref(project_name, model_name, version=resolved_version)) }}
     {% endif %}
 
     {{ return(ref(project_name, model_name)) }}
