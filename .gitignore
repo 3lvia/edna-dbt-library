@@ -4,3 +4,4 @@ dbt_modules/
 logs/
 .vscode/*
 dbt_internal_packages/
+.codex

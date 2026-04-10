@@ -54,6 +54,8 @@ This repository contains reusable macros and materializations for dbt projects.
         - [`cloud_env_sql_values()`](#cloud_env_sql_values)
         - [`log_model_run_started_pre_hook(relation=this, message=None, max_history_load_days=None)`](#log_model_run_started_pre_hookrelationthis-messagenone-max_history_load_daysnone)
         - [`log_model_run_succeeded_post_hook(relation=this, message=None, max_history_load_days=None)`](#log_model_run_succeeded_post_hookrelationthis-messagenone-max_history_load_daysnone)
+      - [Upstream Relations](#upstream-relations)
+        - [`cross_project_ref(project_name=none, model_name=none, source_name=none, table_name=none, version=none)`](#cross_project_refproject_namenone-model_namenone-source_namenone-table_namenone-versionnone)
       - [Quote Replace](#quote-replace)
         - [`quote_replace(string)`](#quote_replacestring)
   - [Examples](#examples)
@@ -61,6 +63,7 @@ This repository contains reusable macros and materializations for dbt projects.
     - [Product Registration](#product-registration-1)
     - [Using Core Macros](#using-core-macros)
     - [Using Utils](#using-utils)
+    - [Using `cross_project_ref`](#using-cross_project_ref)
 
 ## Overview
 
@@ -262,6 +265,25 @@ Post-hook macro to log the successful completion of a model run.
 
 Generate a comma-separated list of quoted DATE literals representing the distinct partitions affected by rows in a temporary relation. Used for BigQuery MERGE operations to satisfy require_partition_filter requirements and avoid scanning entire partitioned tables.
 
+#### Upstream Relations
+
+##### `cross_project_ref(project_name=none, model_name=none, source_name=none, table_name=none, version=none)`
+
+Resolve an upstream project dependency by `DBT_PROJECT_ENVIRONMENT`.
+
+- `DEV` uses `source(source_name, table_name)`
+- `Development`, `CI`, `TEST`, and `PROD` use cross-project `ref(project_name, model_name, version=...)`
+
+The macro fails fast if `DBT_PROJECT_ENVIRONMENT` is missing or unsupported, or if the required arguments for the selected strategy are not provided.
+
+Argument semantics:
+
+- `project_name`: upstream dbt project name used by cross-project `ref()`
+- `model_name`: logical upstream dbt model name used by `ref()`
+- `source_name`: downstream source name used by `source()` in `DEV`
+- `table_name`: physical upstream table name used by `source()` in `DEV`; defaults to `model_name` when omitted
+- `version`: optional dbt model version forwarded to cross-project `ref()`
+
 #### Quote Replace
 
 ##### `quote_replace(string)`
@@ -314,3 +336,59 @@ SELECT
   {{ edna_dbt_lib.hex_to_int('FF') }} AS int_value
 FROM my_table
 ```
+
+### Using `cross_project_ref`
+
+Use the macro directly from downstream models:
+
+```sql
+select *
+from {{ edna_dbt_lib.cross_project_ref(
+  project_name='msi',
+  model_name='my_model',
+  source_name='msi_curated',
+  version=1
+) }}
+```
+
+If the physical DEV table name differs from the logical dbt model name, set `table_name` explicitly:
+
+```sql
+select *
+from {{ edna_dbt_lib.cross_project_ref(
+  project_name='msi',
+  model_name='my_model',
+  source_name='msi_curated',
+  table_name='my_model_v2',
+  version=2
+) }}
+```
+
+Define a matching source in the downstream project for development environments that resolve via `source()`:
+
+```yaml
+version: 2
+
+sources:
+  - name: msi_curated
+    schema: msi_group_curated
+    tables:
+      - name: my_model
+```
+
+Behavior by environment:
+
+- `DEV`: use the declared source so downstream development jobs can point to explicit upstream development relations instead of relying on cross-project `ref()` resolution against the producer project's deployment metadata.
+- `Development`, `CI`, `TEST`, and `PROD`: use cross-project `ref()` and optional `version`. This matches your setup where CI uses the TEST BigQuery connection and should behave like TEST/STG.
+
+In dbt Mesh terms, this macro is intended for downstream projects that use project dependencies in `TEST` and `PROD`, but want explicit `source()` mappings in development-oriented environments.
+
+Required arguments depend on the active environment:
+
+- `DEV`: `source_name` is required. `table_name` is optional and defaults to `model_name`.
+- `Development`, `CI`, `TEST`, `PROD`: `project_name` and `model_name` are required. `version` is optional.
+
+Versioning note:
+
+- `ref()` resolves logical model versions, so `model_name` and `version` are enough in `Development`, `CI`, `TEST`, and `PROD`.
+- `source()` resolves physical table names only, so in `DEV` you must set `table_name` explicitly whenever the physical upstream table name differs from `model_name`, for example because aliasing or a new version changes the deployed table name.
