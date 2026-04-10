@@ -147,6 +147,32 @@ macros:
         description: The target relation to adjust for deployment environment.
         type: object
 
+  - name: cross_project_ref
+    description: >
+      Resolve an upstream project dependency differently by environment. Uses
+      `source(source_name, table_name)` when `DBT_PROJECT_ENVIRONMENT`
+      resolves to `DEV`, and uses cross-project
+      `ref(project_name, model_name, version=...)` when it resolves to
+      `Development`, `CI`, `TEST`, or `PROD`. Fails fast when the environment variable is missing,
+      unsupported, or when the required arguments for the selected resolution
+      strategy are not provided.
+    arguments:
+      - name: project_name
+        description: Upstream dbt project name used for cross-project `ref()` in CI/TEST/PROD.
+        type: string
+      - name: model_name
+        description: Upstream logical dbt model name used for cross-project `ref()` in Development/CI/TEST/PROD. Also used as the default physical source table name in DEV when `table_name` is not provided.
+        type: string
+      - name: source_name
+        description: Source name used for `source()` in DEV.
+        type: string
+      - name: table_name
+        description: Optional physical source table name used for `source()` in DEV. Defaults to `model_name` when omitted.
+        type: string
+      - name: version
+        description: Optional model version forwarded to cross-project `ref()` in Development/CI/TEST/PROD.
+        type: integer
+
   - name: _string_or_null
     description: "Return the quoted string or the SQL literal `null` if not defined."
     arguments:
