@@ -93,6 +93,19 @@ Generates alias names for models, optionally incorporating versioning informatio
 
 A BigQuery-specific materialization for incremental loads that includes logging of model run events. Supports partitioning and clustering configurations. Can be configured with `max_history_load_days` to limit the maximum amount of historical data loaded from the last successful run. Custom config options can be set at the top level or under `meta` (via `config.meta_get`).
 
+Full refresh supports `full_refresh_strategy`:
+
+- `rebuild_all` (default): recreates the table with all rows up to the current run window end and logs the initial window start.
+- `rebuild_incremental`: recreates the table from the initial window start and loads only the first incremental window, allowing later runs to catch up using `max_history_load_days`. `restart_incremental` is accepted as an alias.
+
+The strategy can be set on the model or overridden for a job/run with the `incremental_log_full_refresh_strategy` dbt variable:
+
+```bash
+dbt run -f --vars '{"incremental_log_full_refresh_strategy": "rebuild_incremental"}'
+```
+
+The run variable takes precedence over model config/meta.
+
 #### `incremental_partition_merge`
 
 A BigQuery-specific materialization for incremental loads using MERGE operations with partition pruning. Optimized for partitioned tables with DAY granularity. Supports unique key matching, event-time based updates, and column filtering through `merge_update_columns` and `merge_exclude_columns` configurations. Automatically prunes partitions to avoid scanning the entire table, satisfying BigQuery's `require_partition_filter` requirement. Supports standard dbt pre and post hooks. Custom config options can be set at the top level or under `meta` (via `config.meta_get`).

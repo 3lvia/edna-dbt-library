@@ -16,6 +16,19 @@
     {% set run_window_col_ts = "SAFE_CAST(" ~ run_window_column ~ " AS TIMESTAMP)" %}
     {% set max_history_load_days = edna_dbt_lib.get_config_or_meta(config, 'max_history_load_days', none) %}
     {% set max_history_load_days_dev_ci = edna_dbt_lib.get_config_or_meta(config, 'max_history_load_days_dev_ci', none) %}
+    {% set configured_full_refresh_strategy = edna_dbt_lib.get_config_or_meta(config, 'full_refresh_strategy', 'rebuild_all') %}
+    {% set full_refresh_strategy = var('incremental_log_full_refresh_strategy', configured_full_refresh_strategy) | lower %}
+    {% set valid_full_refresh_strategies = ['rebuild_all', 'rebuild_incremental', 'restart_incremental'] %}
+    {% if full_refresh_strategy not in valid_full_refresh_strategies %}
+        {% do exceptions.raise_compiler_error(
+            "incremental_log: `full_refresh_strategy` must be one of "
+            ~ (valid_full_refresh_strategies | join(', '))
+            ~ " but was '" ~ full_refresh_strategy ~ "'."
+        ) %}
+    {% endif %}
+    {% if full_refresh_strategy == 'restart_incremental' %}
+        {% set full_refresh_strategy = 'rebuild_incremental' %}
+    {% endif %}
 
 
 
@@ -38,15 +51,27 @@
         ) %}
     {% endif %}
 
-    {# Lower bound for incrementals: previous successful run's runWindowEnd #}
-    {% set prev_run_window_end = edna_dbt_lib.get_last_successful_run_window_end(log_table_id, target_table_id) %}
+    {# Window starts are mode-dependent:
+       - normal incremental continues from the last successful run
+       - full refresh logs the initial start because the table is rebuilt from scratch
+       - rebuild_incremental also uses the initial start as the lower bound #}
+    {% set is_rebuild_incremental = full_refresh_mode and full_refresh_strategy == 'rebuild_incremental' %}
+    {% set last_successful_run_window_end = edna_dbt_lib.get_last_successful_run_window_end(log_table_id, target_table_id) %}
+    {% if full_refresh_mode %}
+        {% set initial_run_window_start = edna_dbt_lib.get_initial_run_window_start(target_table_id) %}
+        {% set effective_run_window_start = initial_run_window_start %}
+        {% set history_limit_window_start = initial_run_window_start if is_rebuild_incremental else last_successful_run_window_end %}
+    {% else %}
+        {% set effective_run_window_start = last_successful_run_window_end %}
+        {% set history_limit_window_start = last_successful_run_window_end %}
+    {% endif %}
 
     {# === Establish the run window === #}
-    {% set current_run_window_end = edna_dbt_lib.apply_history_load_limit(max_history_load_days, prev_run_window_end, run_started_at, max_history_load_days_dev_ci) %}
+    {% set current_run_window_end = edna_dbt_lib.apply_history_load_limit(max_history_load_days, history_limit_window_start, run_started_at, max_history_load_days_dev_ci) %}
 
     {# Log the start of THIS run #}
     {%- call statement('log_model_run_started') -%}
-        {{ edna_dbt_lib.log_model_event(log_table_id, target_relation, 'model_run_started',  prev_run_window_end, current_run_window_end, ids=bq_ids, event_ts=model_run_started_time) }}
+        {{ edna_dbt_lib.log_model_event(log_table_id, target_relation, 'model_run_started',  effective_run_window_start, current_run_window_end, ids=bq_ids, event_ts=model_run_started_time) }}
     {%- endcall -%}
 
     {# Upper bound (applies to all builds) #}
@@ -54,9 +79,9 @@
         {{ run_window_col_ts }} <= TIMESTAMP('{{ current_run_window_end }}')
     {%- endset %}
 
-    {# Lower bound for incrementals: previous run start (we fetched it BEFORE logging this run) #}
+    {# Lower bound for incremental-style loads. #}
     {% set lower_bound_clause -%}
-        {{ run_window_col_ts }} > TIMESTAMP('{{ prev_run_window_end }}')
+        {{ run_window_col_ts }} > TIMESTAMP('{{ effective_run_window_start }}')
     {%- endset %}
 
     {% set ctx = (env_var('DBT_CLOUD_INVOCATION_CONTEXT', '') or '') | lower %}
@@ -99,17 +124,17 @@
                 partition_by,
                 False,
                 target_relation,
-                (filtered_sql_incr if is_dev_ci and not full_refresh_mode else filtered_sql_full)) }}
+                (filtered_sql_incr if is_rebuild_incremental or (is_dev_ci and not full_refresh_mode) else filtered_sql_full)) }}
         {%- endcall -%}
 
         {%- call statement('log_model_run_succeeded') -%}
-            {{ edna_dbt_lib.log_model_event(log_table_id, target_relation, 'model_run_succeeded', prev_run_window_end, current_run_window_end, ids=bq_ids) }}
+            {{ edna_dbt_lib.log_model_event(log_table_id, target_relation, 'model_run_succeeded', effective_run_window_start, current_run_window_end, ids=bq_ids) }}
         {%- endcall -%}
 
 
     {% else %}
 
-        {# === Incremental append: rows written in (prev_run_window_end, current_run_window_end] === #}
+        {# === Incremental append: rows written in (effective_run_window_start, current_run_window_end] === #}
 
         {% if on_schema_change != 'ignore' %}
             {# Build a temp table so we can reconcile schema robustly #}
@@ -129,7 +154,7 @@
             {% endcall %}
 
             {%- call statement('log_model_run_succeeded') -%}
-                {{ edna_dbt_lib.log_model_event(log_table_id, target_relation, 'model_run_succeeded', prev_run_window_end, current_run_window_end, ids=bq_ids) }}
+                {{ edna_dbt_lib.log_model_event(log_table_id, target_relation, 'model_run_succeeded', effective_run_window_start, current_run_window_end, ids=bq_ids) }}
             {%- endcall -%}
 
 
@@ -151,7 +176,7 @@
             {% endcall %}
 
             {%- call statement('log_model_run_succeeded') -%}
-                {{ edna_dbt_lib.log_model_event(log_table_id, target_relation, 'model_run_succeeded', prev_run_window_end, current_run_window_end, ids=bq_ids) }}
+                {{ edna_dbt_lib.log_model_event(log_table_id, target_relation, 'model_run_succeeded', effective_run_window_start, current_run_window_end, ids=bq_ids) }}
             {%- endcall -%}
 
         {% endif %}
