@@ -154,6 +154,9 @@
     {% set project_id = parts[0] %}
 
     {% if source_table is not none %}
+        {% if source_dataset is none %}
+            {% do exceptions.raise_compiler_error("get_initial_run_window_start: `source_dataset` is required when `source_table` is set.") %}
+        {% endif %}
         {{ return(edna_dbt_lib.get_earliest_partition_timestamp(project_id, source_dataset, source_table) or default) }}
     {% else %}
         {{ return(default) }}
