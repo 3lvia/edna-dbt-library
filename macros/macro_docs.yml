@@ -39,6 +39,7 @@ macros:
       - `run_window_column` *(string, default: `insertTime`)* - timestamp column used for incremental windowing.
       - `max_history_load_days` *(string, optional)* - maximum number of days of historical data to load from the last successful run. If the time since the last successful run exceeds this limit, the current run window end will be limited to prevent excessive data loading.
       - `max_history_load_days_dev_ci` *(string, optional)* - override for max_history_load_days in dev/ci environments. If not set, defaults to 1 day in dev/ci.
+      - `full_refresh_strategy` *(string, default: `rebuild_all`)* - controls full refresh behavior. `rebuild_all` recreates the table with all rows up to the current run window end and logs the initial window start. `rebuild_incremental` recreates the table from the initial window start and loads only the first incremental window, allowing later runs to catch up using `max_history_load_days`. `restart_incremental` is accepted as an alias for `rebuild_incremental`. Can be overridden for a job/run with the `incremental_log_full_refresh_strategy` dbt variable, for example `dbt run -f --vars '{"incremental_log_full_refresh_strategy": "rebuild_incremental"}'`. The dbt variable takes precedence over model config/meta.
       - `source_dataset` *(string, optional)* - BigQuery dataset name for the source table used to determine earliest partition timestamp when no successful runs are found.
       - `source_table` *(string, optional)* - BigQuery table name for the source table used to determine earliest partition timestamp when no successful runs are found.
       - `partition_by` *(dict|string)* - standard BigQuery partitioning config.
@@ -483,6 +484,19 @@ macros:
       environment (project, user, invocation context) for insertion into log
       records.
     arguments: []
+
+  - name: get_initial_run_window_start
+    description: >
+      Return the initial run window start for a model. If source_table is configured,
+      this is derived from the earliest partition in the configured source table;
+      otherwise it falls back to the default timestamp.
+    arguments:
+      - name: table_id
+        description: Fully qualified BigQuery table id in the form project.dataset.table.
+        type: string
+      - name: default
+        description: Fallback timestamp used when no source partition can be resolved.
+        type: string
 
   - name: apply_history_load_limit
     description: >

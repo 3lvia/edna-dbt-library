@@ -136,9 +136,30 @@
     {% endif %}
 
     {% if ts_str is none and source_table is not none %}
-        {{ return(edna_dbt_lib.get_earliest_partition_timestamp(project_id, source_dataset, source_table) or default) }}
+        {{ return(edna_dbt_lib.get_initial_run_window_start(table_id, default)) }}
     {% else %}
         {{ return(ts_str or default) }}
+    {% endif %}
+{% endmacro %}
+
+{# Initial window start used when a model should be rebuilt from the beginning. #}
+{% macro get_initial_run_window_start(table_id, default='1900-01-01 00:00:00.000000 UTC') %}
+    {% set source_dataset = edna_dbt_lib.get_config_or_meta(config, 'source_dataset') %}
+    {% set source_table = edna_dbt_lib.get_config_or_meta(config, 'source_table') %}
+
+    {% set parts = table_id.split('.') %}
+    {% if parts | length != 3 %}
+        {% do exceptions.raise_compiler_error("get_initial_run_window_start: table_id must be 'project.dataset.table' but was '" ~ table_id ~ "'") %}
+    {% endif %}
+    {% set project_id = parts[0] %}
+
+    {% if source_table is not none %}
+        {% if source_dataset is none %}
+            {% do exceptions.raise_compiler_error("get_initial_run_window_start: `source_dataset` is required when `source_table` is set.") %}
+        {% endif %}
+        {{ return(edna_dbt_lib.get_earliest_partition_timestamp(project_id, source_dataset, source_table) or default) }}
+    {% else %}
+        {{ return(default) }}
     {% endif %}
 {% endmacro %}
 
