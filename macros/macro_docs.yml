@@ -13,7 +13,6 @@ macros:
         type: string
       - name: node
         description: The dbt node object (model) used to inspect FQN and config.
-        type: object
 
   - name: generate_alias_name
     description: >
@@ -26,7 +25,6 @@ macros:
         type: string
       - name: node
         description: The dbt node object used to read version/config. Defaults to none.
-        type: object
 
   - name: materialization_incremental_log_bigquery
     description: >
@@ -117,7 +115,6 @@ macros:
     arguments:
       - name: config_obj
         description: The config object to inspect (e.g., `config` or `node.config`).
-        type: object
       - name: key
         description: Config key to resolve.
         type: string
@@ -136,7 +133,7 @@ macros:
         type: string
       - name: target_relation
         description: Target relation used to derive schema/database for the tmp view.
-        type: object
+        type: relation
 
   - name: get_deployed_relation
     description: >
@@ -146,7 +143,7 @@ macros:
     arguments:
       - name: target_relation
         description: The target relation to adjust for deployment environment.
-        type: object
+        type: relation
 
   - name: cross_project_ref
     description: >
@@ -188,7 +185,7 @@ macros:
     arguments:
       - name: target_relation
         description: Relation to inspect
-        type: object
+        type: relation
 
   - name: _get_formated_columns
     description: >
@@ -197,7 +194,7 @@ macros:
     arguments:
       - name: target_relation
         description: Relation to pull columns from.
-        type: object
+        type: relation
 
   - name: _get_formated_labels
     description: >
@@ -206,7 +203,7 @@ macros:
     arguments:
       - name: label_dict
         description: Dictionary of labels (key -> value)
-        type: dict
+        type: dict[string, string]
 
   - name: _upsert_dataproduct_entry
     description: >
@@ -246,7 +243,7 @@ macros:
         type: string
       - name: size_info
         description: Object containing row_count and size_bytes
-        type: object
+        type: dict[string, any]
       - name: preview_where_clause
         description: Optional WHERE clause for data preview
         type: string
@@ -276,7 +273,7 @@ macros:
     arguments:
       - name: target_relation
         description: dbt relation object to validate
-        type: object
+        type: relation
 
   - name: _is_registered_dataproduct
     description: >
@@ -285,7 +282,7 @@ macros:
     arguments:
       - name: target_relation
         description: dbt relation object to check registration status
-        type: object
+        type: relation
 
   - name: _check_for_column_deletion_and_descriptions
     description: >
@@ -295,9 +292,9 @@ macros:
       - name: compiled_sql
         type: string
       - name: target_relation
-        type: object
+        type: relation
       - name: is_registered
-        type: boolean
+        type: bool
 
   - name: _get_missing_columns
     description: >
@@ -305,9 +302,9 @@ macros:
       missing from the new model output.
     arguments:
       - name: target_columns
-        type: list
+        type: list[column]
       - name: new_columns
-        type: list
+        type: list[column]
 
   - name: _get_columns_from_relation
     description: >
@@ -316,7 +313,7 @@ macros:
     arguments:
       - name: relation
         description: dbt relation object to extract column information from
-        type: object
+        type: relation
 
   - name: _validate_semantic_versioning
     description: >
@@ -341,7 +338,7 @@ macros:
       - name: index
         type: integer
       - name: zero_based
-        type: boolean
+        type: bool
 
   - name: hex_map
     description: Extract the hex byte at `index` from a hex string.
@@ -351,7 +348,7 @@ macros:
       - name: index
         type: integer
       - name: zero_based
-        type: boolean
+        type: bool
 
   - name: reverse_hex_bytes
     description: Reverse byte order of a hex expression (useful for endian conversions).
@@ -359,7 +356,7 @@ macros:
       - name: hex_expr
         type: string
       - name: add_0x
-        type: boolean
+        type: bool
 
   - name: hex_to_int
     description: Convert a hexadecimal string value to an integer.
@@ -407,7 +404,7 @@ macros:
       - name: sign
         type: integer
       - name: mantissa
-        type: number
+        type: float
       - name: unbiased_exponent
         type: integer
 
@@ -428,7 +425,7 @@ macros:
     arguments:
       - name: relation
         description: The dbt relation object to extract BigQuery identifiers from.
-        type: object
+        type: relation
 
   - name: log_model_event
     description: >
@@ -440,7 +437,7 @@ macros:
         type: string
       - name: relation
         description: The dbt relation object representing the model.
-        type: object
+        type: relation
       - name: event_type
         description: Type of event (e.g., model_run_started, model_run_succeeded).
         type: string
@@ -452,7 +449,7 @@ macros:
         type: string
       - name: ids
         description: Optional ids object for logging. Defaults to None.
-        type: object
+        type: dict[string, string]
       - name: event_ts
         description: Optional event timestamp. Defaults to None.
         type: string
@@ -545,7 +542,7 @@ macros:
     arguments:
       - name: timestamps
         description: List of timestamp strings in 'YYYY-MM-DD HH:MM:SS.ffffff UTC' format.
-        type: list
+        type: list[string]
 
   - name: get_highest_string_timestamp
     description: >
@@ -556,7 +553,7 @@ macros:
     arguments:
       - name: timestamps
         description: List of timestamp strings in 'YYYY-MM-DD HH:MM:SS.ffffff UTC' format.
-        type: list
+        type: list[string]
 
   - name: get_earliest_partition_timestamp
     description: >
@@ -581,7 +578,7 @@ macros:
     arguments:
       - name: relation
         description: The dbt relation object. Defaults to 'this'.
-        type: object
+        type: relation
       - name: message
         description: Optional custom message for the log event. Defaults to None.
         type: string
@@ -604,7 +601,7 @@ macros:
     arguments:
       - name: relation
         description: The dbt relation object. Defaults to 'this'.
-        type: object
+        type: relation
       - name: message
         description: Optional custom message for the log event. Defaults to None.
         type: string
@@ -630,7 +627,7 @@ macros:
     arguments:
       - name: tmp_relation
         description: The temporary relation containing the batch of rows to be merged.
-        type: object
+        type: relation
       - name: partition_field
         description: The timestamp column used for partitioning.
         type: string
