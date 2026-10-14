@@ -2,8 +2,6 @@
 
 ## This is a template file used for dbt development in Elvia
 
-Read `DOMAIN_CONTEXT.md` for repository-specific domain guidance. That file is owned by the repository team and is
-preserved by the sync. Follow this shared standard unless a domain-specific exception is explicitly documented there.
 
 ## Before you finish
 - Check all the boxes in the checklist in 6. 
