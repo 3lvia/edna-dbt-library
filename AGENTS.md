@@ -2,8 +2,6 @@
 
 ## This is a template file used for dbt development in Elvia
 
-Read `DOMAIN_CONTEXT.md` for repository-specific domain guidance. That file is owned by the repository team and is
-preserved by the sync. Follow this shared standard unless a domain-specific exception is explicitly documented there.
 
 ## Before you finish
 - Check all the boxes in the checklist in 6. 
@@ -235,10 +233,12 @@ A model becomes a data product only when it lives in the `dataproduct` folder an
 - [ ] Correct materialization considered (view → table → incremental), and partition column
       checked for incremental models
 - [ ] No hardcoded environment/dataset names in SQL — use `{{ target.name }}`/`ref()`/`source()`
-- [ ] Dedicated `.yml` file with the same name as the model, including descriptions and tests
+- [ ] Dedicated `.yml` file with the same name as each model, including descriptions for all fields in that model; reuse suitable descriptions from sources or upstream
+  models.
+- [ ] Check for relevant and good tests in `.yml` files
 - [ ] Data products have a `meta.dataproduct` config block with a mandatory `owner`, and a
       description on the model and every column
 - [ ] Breaking changes to a published data product bump the semantic version instead of editing
       existing fields in place
-- [ ] Preform SQL fluff on all changed .sql and .yml files
+- [ ] Preform `make lint-sql` on changed .sql and .yml files
 - [ ] Run dbt parse on the whole project
